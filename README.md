@@ -27,7 +27,7 @@ just learn
 
 Prefer no web tools? Skip the extension installation and run `LEARNVAS_WEB_ACCESS=0 just learn` instead.
 
-Open the URL printed by Vite, normally **http://localhost:5173**. Type a question and click **Ask →** or press **Ctrl/Cmd+Enter**.
+Open the URL printed by Vite, normally **http://localhost:5173**. Type a question and click **Ask →** or press **Ctrl/Cmd+Enter**. Click **?** at the top-right for in-app help.
 
 > `just learn` attempts to terminate any process using port 5178 before starting the bridge. See [Getting started](docs/getting-started.md) for a two-terminal alternative and setup details.
 

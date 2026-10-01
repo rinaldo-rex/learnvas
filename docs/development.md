@@ -46,6 +46,7 @@ Paths below are relative to the project root.
 | `src/nodes/` | Prompt and response card interactions and rendering. |
 | `src/components/NodePorts.tsx` | Hover **+** buttons and connection handles. |
 | `src/components/ExtensionsPanel.tsx` | Read-only extension inventory. |
+| `src/components/HelpButton.tsx`, `public/help.html` | Modal help overlay and its self-contained HTML guide. |
 | `src/lib/api.ts` | Model/inventory requests and SSE consumption. |
 | `src/lib/ports.ts` | Available sides, branch placement, and response direction. |
 | `src/lib/theme.ts`, `src/lib/useTheme.ts`, `src/theme.css` | Theme preference, system appearance, and color tokens. |

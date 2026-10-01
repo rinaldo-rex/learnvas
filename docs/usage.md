@@ -40,6 +40,7 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Delete a branch | Click **×** on a card. That card **and all downstream cards** are removed. |
 | Reset the canvas | Click **Clear** and confirm. This removes the current canvas, not your theme preference or Pi credentials. |
 | Change appearance | Choose **Theme: System**, **Light**, or **Dark**. System mode reacts to OS appearance changes. |
+| Open help | Click **?** at the top-right of the canvas. Close the overlay with **Esc**, **Close ×**, or a click outside it. |
 
 Answers stream as Markdown, including headings, links, code blocks, lists, and tables. With web access enabled, the tutor can look up current information and supply sources.
 

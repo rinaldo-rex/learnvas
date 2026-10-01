@@ -15,6 +15,7 @@ import {
 } from '@xyflow/react'
 import { AppCtx, type AppActions } from './actions'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
+import { HelpButton } from './components/HelpButton'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { parseThemePreference } from './lib/theme'
@@ -579,6 +580,9 @@ function Canvas() {
               </button>
             </div>
             <ExtensionsPanel />
+          </Panel>
+          <Panel position="top-right">
+            <HelpButton theme={theme} />
           </Panel>
         </ReactFlow>
       </div>

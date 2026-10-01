@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Learnvas help</title>
+  <script>
+    (() => {
+      const params = new URLSearchParams(location.search)
+      const embedded = params.get('embedded') === '1' && parent !== window
+      const media = matchMedia('(prefers-color-scheme: dark)')
+      const apply = (theme) => {
+        document.documentElement.dataset.theme = theme
+        document.documentElement.style.colorScheme = theme
+      }
+      const refresh = () => {
+        let preference = 'system'
+        try { preference = localStorage.getItem('learnvas:theme') || 'system' } catch {}
+        apply(preference === 'dark' || preference === 'light' ? preference : media.matches ? 'dark' : 'light')
+      }
+      if (embedded) {
+        const initial = params.get('theme')
+        apply(initial === 'dark' ? 'dark' : 'light')
+        window.addEventListener('message', (event) => {
+          if (event.source !== parent || event.origin !== location.origin) return
+          if (event.data?.type === 'learnvas-help-theme' && ['light', 'dark'].includes(event.data.theme)) {
+            apply(event.data.theme)
+          }
+        })
+        document.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape' && !event.isComposing) {
+            event.preventDefault()
+            parent.postMessage({ type: 'learnvas-help-close' }, location.origin)
+          }
+        })
+      } else {
+        refresh()
+        media.addEventListener('change', refresh)
+        window.addEventListener('storage', (event) => {
+          if (event.key === 'learnvas:theme' || event.key === null) refresh()
+        })
+      }
+      document.addEventListener('click', (event) => {
+        const link = event.target.closest?.('a[href^="#"]')
+        const section = link && document.getElementById(link.hash.slice(1))
+        if (section?.tagName === 'DETAILS') section.open = true
+      })
+    })()
+  </script>
+  <style>
+    :root {
+      --bg: #fff; --surface: #f6f5f1; --text: #1b1b1f;
+      --muted: #6b675c; --border: #dcdbd6; --accent: #6b5ca8;
+      --quote-bg: #fdf6e3; --quote-text: #6b5d33; --quote-border: #e3b341;
+    }
+    :root[data-theme="dark"] {
+      --bg: #14161c; --surface: #22252e; --text: #edeef2;
+      --muted: #b5b8c4; --border: #454b5a; --accent: #d0bbff;
+      --quote-bg: #352d1d; --quote-text: #f1d594; --quote-border: #ceaa51;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 20px; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 15px/1.65 system-ui, -apple-system, 'Segoe UI', sans-serif;
+    }
+    main { max-width: 850px; margin: auto; padding: 32px 36px 48px; }
+    h1 { font-size: clamp(25px, 4vw, 36px); line-height: 1.2; margin: 6px 0 14px; }
+    h2 { font-size: 21px; line-height: 1.3; margin: 30px 0 12px; }
+    h3 { font-size: 16px; margin: 20px 0 6px; }
+    p { margin: 10px 0; }
+    .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .intro { color: var(--muted); font-size: 17px; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 24px 0; font-size: 13px; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; list-style: none; padding: 0; }
+    .steps li { border: 1px solid var(--border); border-radius: 10px; padding: 14px; background: var(--surface); }
+    .steps strong { display: block; margin-bottom: 4px; }
+    .steps span { color: var(--muted); font-size: 13px; }
+    blockquote { border-left: 3px solid var(--quote-border); background: var(--quote-bg); color: var(--quote-text); margin: 14px 0; padding: 10px 14px; border-radius: 0 8px 8px 0; }
+    .note { color: var(--muted); font-size: 13px; }
+    code, kbd { font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: .9em; }
+    code { overflow-wrap: anywhere; }
+    kbd { border: 1px solid var(--border); border-radius: 4px; padding: 2px 5px; white-space: nowrap; background: var(--surface); }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; margin: 12px 0; }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    th { background: var(--surface); }
+    td:first-child { width: 28%; }
+    ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    details { margin: 14px 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; }
+    summary { cursor: pointer; font-weight: 650; }
+    details[open] summary { margin-bottom: 12px; }
+    footer { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+    @media (max-width: 540px) {
+      main { padding: 24px 18px 36px; }
+      .steps { grid-template-columns: 1fr; }
+      th, td { padding: 8px 6px; }
+      details { padding: 12px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">Learnvas · Canvas guide</div>
+    <h1>Follow your curiosity.</h1>
+    <p class="intro">Each question and answer is a card. Branch from an idea, ask for a deeper explanation, or compare models without losing the original thread.</p>
+  </header>
+
+  <nav aria-label="Help topics">
+    <a href="#start">Start</a>
+    <a href="#branch">Branch</a>
+    <a href="#controls">Controls</a>
+    <a href="#models">Models &amp; extensions</a>
+    <a href="#privacy">Saving &amp; privacy</a>
+    <a href="#setup">Setup</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </nav>
+
+  <section id="start" aria-labelledby="start-title">
+    <h2 id="start-title">Your first conversation</h2>
+    <ol class="steps">
+      <li><strong>1. Choose a model</strong><span>Pick a provider and model in the toolbar, or use Pi’s default.</span></li>
+      <li><strong>2. Ask a question</strong><span>Type in the prompt card, then click Ask → or press Ctrl/Cmd+Enter.</span></li>
+      <li><strong>3. Explore the answer</strong><span>Read the streaming response, then select a passage or use a + to continue.</span></li>
+    </ol>
+    <p><kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Enter</kbd> sends a prompt. Plain <kbd>Enter</kbd> adds a newline.</p>
+  </section>
+
+  <section id="branch" aria-labelledby="branch-title">
+    <h2 id="branch-title">Two ways to branch</h2>
+    <h3>Select an excerpt</h3>
+    <p>Drag-select text in an answer or prompt input, then release the mouse. A connected input card opens with the selected text quoted and the cursor ready for your follow-up.</p>
+    <blockquote>“gradient descent”<br><strong>Your follow-up:</strong> Can you elaborate more on this?</blockquote>
+    <h3>Click a +</h3>
+    <p>Hover over a card to reveal <strong>+</strong> buttons on its unused sides. Click one to create a connected blank prompt on that side. If every side is connected, a top-right <strong>+</strong> remains available—there is no connection-count limit.</p>
+    <p class="note">Both actions create a draft, not an immediate request. Sending it uses the currently selected model and that branch’s ancestral conversation history. Other branches are not included.</p>
+    <p>For an unrelated topic, click <strong>＋ New prompt</strong> in the toolbar instead. It creates a separate root conversation.</p>
+  </section>
+
+  <section id="controls" aria-labelledby="controls-title">
+    <h2 id="controls-title">Canvas controls</h2>
+    <table>
+      <thead><tr><th scope="col">Action</th><th scope="col">How</th></tr></thead>
+      <tbody>
+        <tr><td>Move a card</td><td>Drag its header. Dragging answer text selects it.</td></tr>
+        <tr><td>Collapse / expand</td><td>Click an answer’s header or a sent prompt’s header. Drafts stay expanded.</td></tr>
+        <tr><td>Resize an answer</td><td>Drag its bottom-right grip. Collapsing and expanding restores its size.</td></tr>
+        <tr><td>Navigate</td><td>Drag empty canvas space to pan; use wheel/trackpad gestures, zoom controls, fit-view, or the minimap. Scrollable card content keeps wheel scrolling inside the card.</td></tr>
+        <tr><td>Compare models</td><td>Select another model, expand a sent prompt, and click <strong>↻ Re-run</strong>. The previous response stays on the canvas.</td></tr>
+        <tr><td>Stop generation</td><td>Click <strong>■ stop</strong>. The partial answer remains.</td></tr>
+        <tr><td>Delete a branch</td><td>Click <strong>×</strong>. This removes the card <strong>and every downstream card</strong>.</td></tr>
+        <tr><td>Reset the canvas</td><td>Click <strong>Clear</strong> and confirm. Your theme preference and Pi credentials are not cleared.</td></tr>
+        <tr><td>Change appearance</td><td>Choose <strong>Theme: System / Light / Dark</strong>. The choice is remembered; System follows OS changes.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">Answers support Markdown headings, lists, links, code blocks, and tables.</p>
+  </section>
+
+  <details id="models">
+    <summary>Models and extensions</summary>
+    <p>The toolbar separates provider and model selection. <strong>pi default</strong> delegates the choice to Pi. A listed model still needs account permission and available quota.</p>
+    <p>At startup, the bridge loads Pi extensions for provider/model registration, then disposes that session. Tutor requests do not reload that entire extension set.</p>
+    <p>The <strong>Extensions</strong> accordion is read-only. It shows startup-loaded extensions, their source paths and capabilities, load diagnostics, and tutor extension configuration. <strong>Refresh inventory</strong> reads the last load snapshot; it does not enable, disable, install, or reload anything.</p>
+    <p>With web access enabled, tutor requests load only <code>pi-web-access</code> and allow <code>web_search</code>, <code>source_check</code>, <code>fetch_content</code>, and <code>get_search_content</code>. Set <code>LEARNVAS_WEB_ACCESS=0</code> before starting the bridge to make tutor requests tool-free.</p>
+    <p class="note">Restart the bridge after changing Pi extension configuration. The inventory is not a list of every installed package.</p>
+  </details>
+
+  <details id="privacy">
+    <summary>Saving, privacy, and safety</summary>
+    <ul>
+      <li>Cards, connections, and response sizes are saved in browser-local storage under <code>learnvas:v1</code>. Theme preference uses <code>learnvas:theme</code>.</li>
+      <li>Storage belongs to the browser profile and origin. A different hostname, port, or profile may show a different canvas. Clearing site data removes it; storage can also be blocked or full.</li>
+      <li>There is no export/import, account sync, or collaboration yet. Browser-local storage is not a backup.</li>
+      <li>Reloading does not resume generation. Partial saved answers are marked stopped.</li>
+      <li>Prompts and branch history go to the chosen model provider. Web queries and URLs may go to external services. Verify important claims and sources.</li>
+    </ul>
+    <p>Tutor sessions are fresh and in-memory: no Pi session files, AGENTS.md context, skills, prompt templates, or built-in file/shell tools are loaded into the tutor session.</p>
+    <p><strong>This is not a security sandbox.</strong> Extensions execute local code with the bridge’s permissions. The bridge has no authentication and is not explicitly bound only to loopback. Keep it on a trusted local machine; do not expose it to untrusted networks.</p>
+  </details>
+
+  <details id="setup">
+    <summary>Local setup and configuration</summary>
+    <p>You need Node.js <strong>22.19+</strong>, pnpm, and a model provider configured in Pi. Learnvas normally reuses credentials from <code>~/.pi/agent</code>.</p>
+    <pre><code>pnpm install
+# If you need credentials: launch Pi, run /login, then exit.
+pnpm exec pi
+# For web access, if not already installed:
+pnpm exec pi install npm:pi-web-access
+just learn</code></pre>
+    <p class="note">Installing the web extension changes your Pi package configuration. <code>just learn</code> uses Bash and attempts to terminate any process on port 5178 with <code>fuser</code>.</p>
+    <p>Without <code>just</code>, run <code>pnpm bridge</code> and <code>pnpm dev</code> in separate terminals. For tool-free tutoring, use <code>LEARNVAS_WEB_ACCESS=0 pnpm bridge</code>, or <code>LEARNVAS_WEB_ACCESS=0 just learn</code> with the combined launcher.</p>
+    <table>
+      <thead><tr><th scope="col">Setting</th><th scope="col">Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>BRIDGE_PORT</code></td><td>Default: 5178. If changed, update the API proxy in <code>vite.config.ts</code>. Launcher cleanup still targets 5178 unless changed.</td></tr>
+        <tr><td><code>PI_CODING_AGENT_DIR</code></td><td>Use another Pi agent directory for configuration, credentials, and resources.</td></tr>
+        <tr><td><code>LEARNVAS_WEB_ACCESS</code></td><td>Set to 0 to disable tutor tools, not the startup extension warmup.</td></tr>
+      </tbody>
+    </table>
+  </details>
+
+  <details id="troubleshooting">
+    <summary>Troubleshooting</summary>
+    <table>
+      <thead><tr><th scope="col">Problem</th><th scope="col">Try</th></tr></thead>
+      <tbody>
+        <tr><td>No models / authentication error</td><td>Check Pi login, provider environment variables, and the bridge terminal. Returning focus to the app refreshes the model list.</td></tr>
+        <tr><td>Quota or provider error</td><td>Check account permission, supported models, and credits. Listing a model does not validate a request.</td></tr>
+        <tr><td>Web requests fail</td><td>Check the web extension and inventory, or restart with web access disabled to isolate the issue.</td></tr>
+        <tr><td>API errors / stale backend</td><td>Ensure the bridge is running on the port configured in Vite. Starting Vite alone does not start the bridge.</td></tr>
+        <tr><td>Canvas seems empty</td><td>Check the browser profile and Vite URL. Storage is separate for each hostname and port.</td></tr>
+        <tr><td>Still in light mode</td><td>System follows your OS. Choose Theme: Dark to override it.</td></tr>
+      </tbody>
+    </table>
+    <p class="note">For bug reports, include reproduction steps, Node/pnpm versions, browser details, and relevant errors. Redact keys, tokens, and private prompts.</p>
+  </details>
+
+  <details>
+    <summary>For contributors</summary>
+    <p>The frontend uses React, TypeScript, Vite, and React Flow. A Node HTTP bridge creates fresh Pi sessions and streams text/tool events back through the chat POST response. No database or separate backend framework is required.</p>
+    <pre><code>pnpm test
+pnpm build</code></pre>
+    <p class="note">Also check text-selection branching, all continuation sides and the corner fallback, header dragging, resized-card collapse, and both themes. Detailed guides live in the repository’s <code>docs/</code> directory.</p>
+  </details>
+
+  <footer>This guide is a single self-contained HTML file—no external assets or model requests. <a href="https://github.com/rinaldo-rex/learnvas" target="_blank" rel="noopener noreferrer">Project repository</a></footer>
+</main>
+</body>
+</html>
