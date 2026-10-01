@@ -121,6 +121,16 @@ function Canvas() {
     fetchModels().then(setModels).catch(() => {})
   }, [])
 
+  // The bridge may restart (with a different extension-registered model set)
+  // while this tab stays open — refetch when the user returns to the window.
+  useEffect(() => {
+    const onFocus = () => {
+      fetchModels().then(setModels).catch(() => {})
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
   /* ---------- starter card on a fresh canvas ---------- */
   useEffect(() => {
     if (saved) return

@@ -86,8 +86,8 @@ const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`)
 
   if (req.method === 'GET' && url.pathname === '/api/models') {
-    modelRuntime
-      .getAvailable()
+    void warmupPromise
+      .then(() => modelRuntime.getAvailable())
       .then((available) => {
         json(res, 200, {
           models: available.map((m) => ({
@@ -119,6 +119,14 @@ const server = http.createServer((req, res) => {
         return
       }
 
+      // Wait for extension registration before resolving models.
+      await warmupPromise
+      const modelRef = parseModelId(payload.model)
+      if (modelRef && !modelRuntime.getModel(modelRef.provider, modelRef.id)) {
+        json(res, 400, { error: `Unknown model: ${payload.model}` })
+        return
+      }
+
       // Fold prior turns into one composed prompt (fresh in-memory session per request).
       const transcript = messages
         .slice(0, -1)
@@ -131,7 +139,7 @@ const server = http.createServer((req, res) => {
 
       let session = null
       try {
-        session = await makeSession(parseModelId(payload.model))
+        session = await makeSession(modelRef)
       } catch (e) {
         json(res, 500, { error: String(e?.message ?? e) })
         return
@@ -189,21 +197,26 @@ const server = http.createServer((req, res) => {
 /**
  * Startup warmup: create and dispose one extension-loading session so that
  * providers/models registered by the user's pi extensions (commandcode,
- * clinepass, …) are registered into the shared ModelRuntime before any
- * /api/models request. Registrations survive session disposal.
+ * clinepass, …) are registered into the shared ModelRuntime. Registrations
+ * survive session disposal. Every API handler awaits this promise, so no
+ * request can observe the pre-registration model list.
  */
-async function warmup() {
-  try {
-    const session = await makeSession(null, { loadExtensions: true })
-    session.dispose()
-    const n = (await modelRuntime.getAvailable().catch(() => [])).length
-    console.log(`[learnvas bridge] extension warmup ok — ${n} models available`)
-  } catch (e) {
-    console.error('[learnvas bridge] extension warmup failed:', e?.message ?? e)
-  }
+let warmupPromise = Promise.resolve()
+function startWarmup() {
+  warmupPromise = (async () => {
+    try {
+      const session = await makeSession(null, { loadExtensions: true })
+      session.dispose()
+      const n = (await modelRuntime.getAvailable().catch(() => [])).length
+      console.log(`[learnvas bridge] extension warmup ok — ${n} models available`)
+    } catch (e) {
+      console.error('[learnvas bridge] extension warmup failed:', e?.message ?? e)
+    }
+  })()
+  return warmupPromise
 }
 
 server.listen(PORT, () => {
   console.log(`[learnvas bridge] listening on http://localhost:${PORT}`)
-  void warmup()
 })
+startWarmup()
