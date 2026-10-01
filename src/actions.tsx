@@ -11,6 +11,8 @@ export interface AppActions {
   sendPrompt(promptId: string, opts?: { rerun?: boolean }): void
   /** Create a child prompt card branching from a response, seeded with the selected excerpt. */
   branchFrom(responseId: string, quote: string): void
+  /** Persist a user resize of a response card (updates node style + data). */
+  resizeNode(id: string, width: number, height: number): void
   stopStream(responseId: string): void
   newPrompt(): void
   models: ModelInfo[]

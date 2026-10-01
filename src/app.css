@@ -211,6 +211,51 @@ button.ghost:hover {
   background: #ffe58a;
 }
 
+/* when the user has set an explicit height, the card fills it and the
+   body flexes to the available space instead of using max-height */
+.card.response {
+  position: relative;
+}
+.card.response.tall {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.card.response.tall .resp {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.resize-grip {
+  position: absolute;
+  right: 3px;
+  bottom: 3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  cursor: nwse-resize;
+  touch-action: none;
+  opacity: 0.55;
+  background:
+    linear-gradient(
+      to top left,
+      transparent 0 30%,
+      #b6b1a4 30% 37%,
+      transparent 37% 47%,
+      #b6b1a4 47% 54%,
+      transparent 54% 64%,
+      #b6b1a4 64% 71%,
+      transparent 71%
+    )
+    content-box;
+  padding: 2px;
+}
+.resize-grip:hover {
+  opacity: 1;
+  background-color: #f1efe9;
+}
+
 .status-dot {
   width: 7px;
   height: 7px;

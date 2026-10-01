@@ -369,6 +369,23 @@ function Canvas() {
     [addPromptNode, setEdges],
   )
 
+  const resizeNode = useCallback(
+    (id: string, width: number, height: number) => {
+      setNodes((ns) =>
+        ns.map((n) =>
+          n.id === id
+            ? ({
+                ...n,
+                style: { ...n.style, width, height },
+                data: { ...n.data, width, height },
+              } as LVNode)
+            : n,
+        ),
+      )
+    },
+    [setNodes],
+  )
+
   const stopStream = useCallback(
     (respId: string) => {
       aborts.current.get(respId)?.abort()
@@ -393,13 +410,14 @@ function Canvas() {
       removeNode,
       sendPrompt,
       branchFrom,
+      resizeNode,
       stopStream,
       newPrompt,
       models,
       selectedModel,
       setSelectedModel,
     }),
-    [patchNode, removeNode, sendPrompt, branchFrom, stopStream, newPrompt, models, selectedModel],
+    [patchNode, removeNode, sendPrompt, branchFrom, resizeNode, stopStream, newPrompt, models, selectedModel],
   )
 
   return (

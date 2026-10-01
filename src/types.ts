@@ -19,6 +19,9 @@ export interface ResponseData extends Record<string, unknown> {
   status: 'streaming' | 'done' | 'error' | 'stopped'
   collapsed: boolean
   sourcePromptId: string
+  /** User-resized card dimensions (persisted; drive wrapper style + body layout). */
+  width?: number
+  height?: number
 }
 
 export type PromptNode = Node<PromptData, 'prompt'>

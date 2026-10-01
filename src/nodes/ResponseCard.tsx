@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { useCallback, useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react'
 import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
 import type { ResponseNode } from '../types'
@@ -10,9 +10,73 @@ const trim = (s: string, n = 26) => {
 }
 
 export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
-  const { patchNode, removeNode, branchFrom, stopStream, models } = useApp()
+  const { patchNode, removeNode, branchFrom, stopStream, models, resizeNode } = useApp()
+  const { getZoom } = useReactFlow()
   const [chip, setChip] = useState<{ x: number; y: number; text: string } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+
+  /* ---------- corner resize ---------- */
+  const drag = useRef<{ x: number; y: number; w: number; h: number; zoom: number } | null>(null)
+  const pending = useRef<{ w: number; h: number } | null>(null)
+  const rafRef = useRef(0)
+
+  const commitPending = useCallback(() => {
+    const p = pending.current
+    pending.current = null
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current)
+      rafRef.current = 0
+    }
+    if (p) resizeNode(id, p.w, p.h)
+  }, [id, resizeNode])
+
+  const onGripDown = useCallback(
+    (e: RPointerEvent<HTMLDivElement>) => {
+      e.stopPropagation()
+      e.preventDefault()
+      drag.current = {
+        x: e.clientX,
+        y: e.clientY,
+        w: data.width ?? cardRef.current?.offsetWidth ?? 340,
+        h: data.height ?? cardRef.current?.offsetHeight ?? 220,
+        zoom: getZoom(),
+      }
+      e.currentTarget.setPointerCapture(e.pointerId)
+    },
+    [data.width, data.height, getZoom],
+  )
+
+  const onGripMove = useCallback(
+    (e: RPointerEvent<HTMLDivElement>) => {
+      const d = drag.current
+      if (!d) return
+      const w = Math.min(900, Math.max(220, Math.round(d.w + (e.clientX - d.x) / d.zoom)))
+      const h = Math.min(1400, Math.max(120, Math.round(d.h + (e.clientY - d.y) / d.zoom)))
+      pending.current = { w, h }
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0
+          commitPending()
+        })
+      }
+    },
+    [commitPending],
+  )
+
+  const onGripUp = useCallback(
+    (e: RPointerEvent<HTMLDivElement>) => {
+      if (!drag.current) return
+      drag.current = null
+      commitPending()
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId)
+      } catch {
+        /* capture already released */
+      }
+    },
+    [commitPending],
+  )
 
   // Show the branch chip near the current text selection inside this card's body.
   const checkSelection = useCallback(() => {
@@ -49,7 +113,10 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
   const streaming = data.status === 'streaming'
 
   return (
-    <div className="card response">
+    <div
+      ref={cardRef}
+      className={`card response ${data.height ? 'tall' : ''}`}
+    >
       <Handle type="target" position={Position.Left} id="t" className="h-hidden" />
       <Handle type="source" position={Position.Right} id="s" className="h-hidden" />
 
@@ -106,6 +173,17 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
         >
           ↳ Branch from “<span>{trim(chip.text)}</span>”
         </div>
+      )}
+
+      {!data.collapsed && (
+        <div
+          className="resize-grip nodrag"
+          title="Drag to resize"
+          onPointerDown={onGripDown}
+          onPointerMove={onGripMove}
+          onPointerUp={onGripUp}
+          onPointerCancel={onGripUp}
+        />
       )}
     </div>
   )
