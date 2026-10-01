@@ -32,15 +32,18 @@ function parseModelId(id) {
   return i > 0 ? { provider: id.slice(0, i), id: id.slice(i + 1) } : null
 }
 
-async function makeSession(modelRef) {
+async function makeSession(modelRef, { loadExtensions = false } = {}) {
   const loader = new DefaultResourceLoader({
     cwd: process.cwd(),
     agentDir: getAgentDir(),
-    // Pure tutor: our prompt only — no AGENTS.md project context, no extensions,
-    // skills, prompt templates, or themes from the user's pi config.
+    // Pure tutor: our prompt only — no AGENTS.md project context, no skills,
+    // prompt templates, or themes. Extensions are only loaded once at startup
+    // (see warmup below) so extension-registered providers/virtual models
+    // (pi.registerProvider / pi.registerVirtualModel) land in the shared
+    // ModelRuntime; per-request chat sessions skip them.
     systemPrompt: TUTOR_SYSTEM,
     noContextFiles: true,
-    noExtensions: true,
+    noExtensions: !loadExtensions,
     noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
@@ -183,6 +186,24 @@ const server = http.createServer((req, res) => {
   json(res, 404, { error: 'not found' })
 })
 
+/**
+ * Startup warmup: create and dispose one extension-loading session so that
+ * providers/models registered by the user's pi extensions (commandcode,
+ * clinepass, …) are registered into the shared ModelRuntime before any
+ * /api/models request. Registrations survive session disposal.
+ */
+async function warmup() {
+  try {
+    const session = await makeSession(null, { loadExtensions: true })
+    session.dispose()
+    const n = (await modelRuntime.getAvailable().catch(() => [])).length
+    console.log(`[learnvas bridge] extension warmup ok — ${n} models available`)
+  } catch (e) {
+    console.error('[learnvas bridge] extension warmup failed:', e?.message ?? e)
+  }
+}
+
 server.listen(PORT, () => {
   console.log(`[learnvas bridge] listening on http://localhost:${PORT}`)
+  void warmup()
 })
