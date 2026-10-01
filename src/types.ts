@@ -5,7 +5,7 @@ export interface PromptData extends Record<string, unknown> {
   text: string
   sent: boolean
   collapsed: boolean
-  /** Excerpt from the parent response this prompt branches from (display-only reference). */
+  /** Selected excerpt from the parent card; displayed and included in model context. */
   quote?: string
   /** One-shot signal: autofocus the textarea when the node is created. */
   focus?: boolean

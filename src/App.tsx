@@ -35,6 +35,8 @@ function loadSaved(): { nodes: LVNode[]; edges: Edge[] } | null {
         if (d.status === 'streaming') d.status = 'stopped'
         d.activity = undefined
       }
+      if (n.type === 'prompt') n.data.focus = false
+      n.dragHandle = '.card-head'
       n.selected = false
     }
     for (const e of j.edges) e.animated = false
@@ -58,7 +60,7 @@ function Canvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(saved?.edges ?? [])
   const [models, setModels] = useState<ModelInfo[]>([])
   const [selectedModel, setSelectedModel] = useState('') // '' = pi default
-  const { screenToFlowPosition } = useReactFlow()
+  const { screenToFlowPosition, getZoom, setCenter } = useReactFlow()
 
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
@@ -144,6 +146,7 @@ function Canvas() {
               {
                 id: crypto.randomUUID(),
                 type: 'prompt',
+                dragHandle: '.card-head',
                 position: { x: -140, y: 0 },
                 data: { kind: 'prompt', text: '', sent: false, collapsed: false, focus: true },
               } satisfies PromptNode,
@@ -207,6 +210,7 @@ function Canvas() {
       const node: PromptNode = {
         id,
         type: 'prompt',
+        dragHandle: '.card-head',
         position,
         data: { kind: 'prompt', text: '', sent: false, collapsed: false, focus, quote },
       }
@@ -225,11 +229,10 @@ function Canvas() {
 
   /** Walk from a prompt card up to the root, collecting [user, assistant] pairs.
    *  Parent edges are either response→prompt (branched from an answer) or
-   *  prompt→prompt (branched from a quoted part of a prompt). `extraEdge`
-   *  lets a just-created branch participate before state has committed. */
-  const buildChain = useCallback((promptId: string, extraEdge?: Edge): ChatMsg[] => {
+   *  prompt→prompt (branched from a quoted part of a prompt). */
+  const buildChain = useCallback((promptId: string): ChatMsg[] => {
     const byId = new Map(nodesRef.current.map((n) => [n.id, n]))
-    const es = extraEdge ? [...edgesRef.current, extraEdge] : edgesRef.current
+    const es = edgesRef.current
     const msgs: ChatMsg[] = []
     let cur: string | undefined = promptId
     let guard = 0
@@ -271,6 +274,7 @@ function Canvas() {
       const resp: ResponseNode = {
         id: respId,
         type: 'response',
+        dragHandle: '.card-head',
         position,
         data: {
           kind: 'response',
@@ -371,20 +375,28 @@ function Canvas() {
     [buildChain, patchNode, startResponse],
   )
 
-  /** Create a sent prompt card branching from a node (response OR prompt),
-   *  with the selected excerpt quoted, and immediately stream a response
-   *  using the currently selected model. */
-  const branchSend = useCallback(
-    (sourceId: string, quote: string, text: string) => {
+  /** Mouse-up creates a connected draft, not a request. Sending that draft
+   *  later uses the normal conversation-chain and streaming path. */
+  const branchPrompt = useCallback(
+    (sourceId: string, quote: string) => {
       const source = nodesRef.current.find((n) => n.id === sourceId)
-      if (!source) return
-      const sw = source.measured?.width ?? 340
+      if (!source || !quote.trim()) return
+      const sw = source.measured?.width ?? (source.type === 'prompt' ? 280 : 340)
+      const siblings = edgesRef.current.filter((e) => e.source === sourceId).length
       const promptId = crypto.randomUUID()
       const promptNode: PromptNode = {
         id: promptId,
         type: 'prompt',
-        position: { x: source.position.x + sw + 90, y: source.position.y - 10 },
-        data: { kind: 'prompt', text, sent: true, collapsed: true, quote },
+        dragHandle: '.card-head',
+        position: { x: source.position.x + sw + 90, y: source.position.y + siblings * 260 },
+        data: {
+          kind: 'prompt',
+          text: '',
+          sent: false,
+          collapsed: false,
+          quote: quote.trim(),
+          focus: true,
+        },
       }
       const parentEdge: Edge = {
         id: `e-${sourceId}-${promptId}`,
@@ -395,9 +407,12 @@ function Canvas() {
       }
       setNodes((ns) => [...ns, promptNode])
       setEdges((es) => [...es, parentEdge])
-      startResponse(promptNode, buildChain(promptId, parentEdge))
+      void setCenter(promptNode.position.x + 140, promptNode.position.y + 120, {
+        zoom: getZoom(),
+        duration: 200,
+      })
     },
-    [buildChain, setEdges, setNodes, startResponse],
+    [getZoom, setCenter, setEdges, setNodes],
   )
 
   const resizeNode = useCallback(
@@ -440,7 +455,7 @@ function Canvas() {
       updatePrompt: patchNode,
       removeNode,
       sendPrompt,
-      branchSend,
+      branchPrompt,
       resizeNode,
       stopStream,
       newPrompt,
@@ -448,7 +463,7 @@ function Canvas() {
       selectedModel,
       setSelectedModel,
     }),
-    [patchNode, removeNode, sendPrompt, branchSend, resizeNode, stopStream, newPrompt, models, selectedModel],
+    [patchNode, removeNode, sendPrompt, branchPrompt, resizeNode, stopStream, newPrompt, models, selectedModel],
   )
 
   return (

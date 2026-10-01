@@ -1,47 +1,41 @@
-import { useEffect, useRef, useState, type MouseEvent as RMouseEvent } from 'react'
+import { useEffect, useRef, type MouseEvent as RMouseEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useApp } from '../actions'
-import { modelLabel } from '../lib/api'
 import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
-import { BranchComposer } from './BranchComposer'
 
 const oneLine = (s: string, n = 46) => {
   const t = s.replace(/\s+/g, ' ').trim()
   return t.length > n ? t.slice(0, n) + '…' : t
 }
 
-export function PromptCard({ id, data }: NodeProps<PromptNode>) {
-  const { updatePrompt, sendPrompt, removeNode, branchSend, models, selectedModel } = useApp()
+export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
+  const { updatePrompt, sendPrompt, removeNode, branchPrompt } = useApp()
   const ref = useRef<HTMLTextAreaElement>(null)
   const quoteRef = useRef<HTMLDivElement>(null)
   const inputScrolls = useOverflowing(ref, [data.text])
   const quoteScrolls = useOverflowing(quoteRef, [data.quote])
-  const [composer, setComposer] = useState<{ x: number; y: number; text: string } | null>(null)
 
-  // Selecting text inside the prompt opens the branch composer.
+  // Selecting text inside a prompt creates a connected draft as well.
   const onInputMouseUp = (e: RMouseEvent<HTMLTextAreaElement>) => {
+    if (e.button !== 0) return
     const ta = e.currentTarget
     const start = ta.selectionStart ?? 0
     const end = ta.selectionEnd ?? 0
     const text = start !== end ? ta.value.slice(start, end).trim() : ''
-    if (!text) {
-      setComposer(null)
-      return
-    }
-    setComposer({
-      x: Math.min(e.clientX + 10, window.innerWidth - 320),
-      y: Math.min(e.clientY + 14, window.innerHeight - 240),
-      text,
-    })
+    if (!text) return
+    branchPrompt(id, text)
+    ta.setSelectionRange(end, end)
   }
 
   useEffect(() => {
-    if (data.focus && ref.current) {
-      ref.current.focus()
-      ref.current.selectionStart = ref.current.value.length
+    // React Flow hides new nodes until measured; hidden inputs cannot focus.
+    if (data.focus && width && height && ref.current) {
+      ref.current.focus({ preventScroll: true })
+      ref.current.setSelectionRange(ref.current.value.length, ref.current.value.length)
+      updatePrompt(id, { focus: false })
     }
-  }, [data.focus])
+  }, [data.focus, width, height, id, updatePrompt])
 
   // Only sent prompts can collapse (collapsing a draft would be confusing).
   const collapsed = data.collapsed && data.sent
@@ -81,11 +75,14 @@ export function PromptCard({ id, data }: NodeProps<PromptNode>) {
             ref={ref}
             className={`prompt-input nodrag nopan ${inputScrolls ? 'nowheel' : ''}`}
             value={data.text}
-            placeholder="What do you want to understand?"
+            placeholder={data.quote ? 'Can you elaborate more on this?' : 'What do you want to understand?'}
             onChange={(e) => updatePrompt(id, { text: e.target.value })}
             onMouseUp={onInputMouseUp}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendPrompt(id)
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
+                e.preventDefault()
+                sendPrompt(id)
+              }
             }}
           />
           <div className="card-foot">
@@ -105,20 +102,6 @@ export function PromptCard({ id, data }: NodeProps<PromptNode>) {
             <span className="hint">⌘/Ctrl + ↵</span>
           </div>
         </>
-      )}
-
-      {composer && (
-        <BranchComposer
-          x={composer.x}
-          y={composer.y}
-          quote={composer.text}
-          modelLabel={modelLabel(selectedModel, models)}
-          onSend={(text) => {
-            branchSend(id, composer.text, text)
-            setComposer(null)
-          }}
-          onClose={() => setComposer(null)}
-        />
       )}
     </div>
   )

@@ -1,4 +1,9 @@
-import { useCallback, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import {
+  useCallback,
+  useRef,
+  type MouseEvent as RMouseEvent,
+  type PointerEvent as RPointerEvent,
+} from 'react'
 import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -8,7 +13,6 @@ import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
 import { useOverflowing } from '../lib/useOverflow'
 import type { ResponseNode } from '../types'
-import { BranchComposer } from './BranchComposer'
 
 // Module-level so the markdown pipeline identity is stable across renders.
 const remarkPlugins = [remarkGfm, remarkBreaks]
@@ -17,9 +21,8 @@ const mdComponents: Components = {
 }
 
 export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
-  const { patchNode, removeNode, branchSend, stopStream, models, selectedModel, resizeNode } = useApp()
+  const { patchNode, removeNode, branchPrompt, stopStream, models, resizeNode } = useApp()
   const { getZoom } = useReactFlow()
-  const [composer, setComposer] = useState<{ x: number; y: number; text: string } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   // Only block canvas wheel-pan while the body actually scrolls — wheel over
@@ -88,26 +91,20 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
     [commitPending],
   )
 
-  // Open the branch composer near the current text selection in this card.
-  const checkSelection = useCallback(() => {
-    const sel = window.getSelection()
-    if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-      setComposer(null)
-      return
-    }
-    const text = sel.toString().trim()
-    const range = sel.getRangeAt(0)
-    if (!text || !bodyRef.current?.contains(range.commonAncestorContainer)) {
-      setComposer(null)
-      return
-    }
-    const rect = range.getBoundingClientRect()
-    setComposer({
-      x: Math.min(rect.right + 4, window.innerWidth - 320),
-      y: Math.min(rect.bottom + 6, window.innerHeight - 240),
-      text,
-    })
-  }, [])
+  // Copy the selected excerpt before focusing a new connected input card.
+  const checkSelection = useCallback(
+    (e: RMouseEvent<HTMLDivElement>) => {
+      if (e.button !== 0) return
+      const sel = window.getSelection()
+      if (!sel || sel.isCollapsed || sel.rangeCount === 0) return
+      const text = sel.toString().trim()
+      const range = sel.getRangeAt(0)
+      if (!text || !bodyRef.current?.contains(range.commonAncestorContainer)) return
+      branchPrompt(id, text)
+      sel.removeAllRanges()
+    },
+    [branchPrompt, id],
+  )
 
   const streaming = data.status === 'streaming'
 
@@ -169,21 +166,6 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
           )}
           {streaming && <span className="caret" />}
         </div>
-      )}
-
-      {composer && (
-        <BranchComposer
-          x={composer.x}
-          y={composer.y}
-          quote={composer.text}
-          modelLabel={modelLabel(selectedModel, models)}
-          onSend={(text) => {
-            branchSend(id, composer.text, text)
-            setComposer(null)
-            window.getSelection()?.removeAllRanges()
-          }}
-          onClose={() => setComposer(null)}
-        />
       )}
 
       {!data.collapsed && (

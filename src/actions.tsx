@@ -9,9 +9,9 @@ export interface AppActions {
   removeNode(id: string): void
   /** Send (or re-run with the currently selected model) the prompt card's text. */
   sendPrompt(promptId: string): void
-  /** Create a sent prompt card branching from a node (response or prompt),
-   *  quote the selected excerpt, and immediately stream a response. */
-  branchSend(sourceId: string, quote: string, text: string): void
+  /** Create a focused draft prompt connected to the selected source card.
+   *  The excerpt is quoted; a response starts only when the draft is sent. */
+  branchPrompt(sourceId: string, quote: string): void
   /** Persist a user resize of a response card (updates node style + data). */
   resizeNode(id: string, width: number, height: number): void
   stopStream(responseId: string): void

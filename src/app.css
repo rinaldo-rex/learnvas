@@ -211,8 +211,7 @@ button.ghost:hover {
    text is meant to be read and selected. */
 .resp,
 .prompt-input,
-.quote,
-.branch-composer textarea {
+.quote {
   user-select: text;
   -webkit-user-select: text;
 }
@@ -401,50 +400,6 @@ button.ghost:hover {
   border-radius: 999px;
   padding: 1px 8px;
   margin: 2px 0 8px;
-}
-
-/* ---------- branch composer ---------- */
-.branch-composer {
-  position: fixed;
-  z-index: 1001;
-  width: 300px;
-  padding: 8px;
-  background: #fff;
-  border: 1px solid #e3b341;
-  border-radius: 10px;
-  box-shadow: 0 8px 28px rgba(60, 45, 0, 0.22);
-}
-.branch-composer .quote {
-  margin: 0 0 6px;
-  max-height: 76px;
-}
-.branch-composer textarea {
-  display: block;
-  width: 100%;
-  border: 1px solid #e4e2da;
-  border-radius: 8px;
-  padding: 7px 9px;
-  font: inherit;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: #3a3a35;
-  background: #fbfaf8;
-  resize: none;
-  field-sizing: content;
-  min-height: 54px;
-  max-height: 150px;
-}
-.branch-composer textarea:focus {
-  outline: none;
-  border-color: #b9b1ea;
-  background: #fff;
-}
-.composer-foot {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
 }
 
 /* ---------- toolbar ---------- */
