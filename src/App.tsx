@@ -17,6 +17,8 @@ import { AppCtx, type AppActions } from './actions'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
+import { parseThemePreference } from './lib/theme'
+import { useTheme } from './lib/useTheme'
 import { PromptCard } from './nodes/PromptCard'
 import { ResponseCard } from './nodes/ResponseCard'
 import type { ChatMsg, LVNode, PromptNode, ResponseData, ResponseNode } from './types'
@@ -57,6 +59,7 @@ export default function App() {
 }
 
 function Canvas() {
+  const { preference, theme, setPreference } = useTheme()
   const saved = useMemo(loadSaved, [])
   const [nodes, setNodes, onNodesChange] = useNodesState<LVNode>(saved?.nodes ?? [])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(saved?.edges ?? [])
@@ -502,6 +505,7 @@ function Canvas() {
           nodes={nodes}
           edges={edges}
           nodeTypes={nodeTypes}
+          colorMode={theme}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           nodesConnectable={false}
@@ -510,9 +514,9 @@ function Canvas() {
           minZoom={0.2}
           maxZoom={2}
         >
-          <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} color="#d9d6cf" />
+          <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} />
           <Controls showInteractive={false} />
-          <MiniMap pannable zoomable bgColor="#f4f3ef" maskColor="rgba(240,239,236,.85)" nodeColor="#cfcabe" />
+          <MiniMap pannable zoomable />
           <Panel position="top-left" className="canvas-controls">
             <div className="toolbar">
               <button className="primary" onClick={newPrompt}>
@@ -545,6 +549,16 @@ function Canvas() {
                 ) : (
                   <option value="">pi default</option>
                 )}
+              </select>
+              <select
+                title="Theme"
+                aria-label="Theme"
+                value={preference}
+                onChange={(e) => setPreference(parseThemePreference(e.target.value))}
+              >
+                <option value="system">Theme: System</option>
+                <option value="light">Theme: Light</option>
+                <option value="dark">Theme: Dark</option>
               </select>
               <button
                 className="ghost"

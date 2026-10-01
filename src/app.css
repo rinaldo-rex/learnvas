@@ -12,7 +12,8 @@ body,
 }
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-  color: #1b1b1f;
+  color: var(--text);
+  background: var(--canvas-bg);
 }
 .canvas-wrap {
   width: 100%;
@@ -31,18 +32,18 @@ body {
 
 .card {
   position: relative;
-  background: #fff;
-  border: 1px solid #dcdbd6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow:
-    0 1px 2px rgba(30, 28, 20, 0.06),
-    0 4px 14px rgba(30, 28, 20, 0.05);
+    0 1px 2px var(--shadow),
+    0 4px 14px var(--shadow-soft);
 }
 .react-flow__node.selected .card {
-  border-color: #8f87e8;
+  border-color: var(--accent);
   box-shadow:
-    0 0 0 2px rgba(143, 135, 232, 0.25),
-    0 4px 14px rgba(30, 28, 20, 0.05);
+    0 0 0 2px var(--selection-ring),
+    0 4px 14px var(--shadow-soft);
 }
 
 .card-head {
@@ -62,16 +63,16 @@ body {
   letter-spacing: 0.07em;
   padding: 2px 7px;
   border-radius: 999px;
-  background: #f1efe9;
-  color: #8a8578;
+  background: var(--chip-bg);
+  color: var(--faint);
 }
 .tag.you {
-  background: #dde9f7;
-  color: #4a6b96;
+  background: var(--you-bg);
+  color: var(--you-text);
 }
 .tag.asst {
-  background: #efe9f7;
-  color: #6b5ca8;
+  background: var(--asst-bg);
+  color: var(--asst-text);
 }
 .head-label {
   overflow: hidden;
@@ -79,13 +80,13 @@ body {
   white-space: nowrap;
   font-weight: 600;
   font-size: 12.5px;
-  color: #3a3a35;
+  color: var(--body-text);
 }
 .model {
   font-size: 10.5px;
-  color: #8a8578;
-  background: #f6f5f1;
-  border: 1px solid #e8e6df;
+  color: var(--faint);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-soft);
   padding: 1px 7px;
   border-radius: 999px;
   overflow: hidden;
@@ -98,7 +99,7 @@ body {
 }
 .chev {
   font-size: 10px;
-  color: #9a9588;
+  color: var(--subtle);
   transition: transform 0.15s;
 }
 .chev.rot {
@@ -107,7 +108,7 @@ body {
 .x {
   border: none;
   background: transparent;
-  color: #b6b1a4;
+  color: var(--disabled-text);
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
@@ -115,17 +116,17 @@ body {
   border-radius: 5px;
 }
 .x:hover {
-  color: #a1512d;
-  background: #f7ece7;
+  color: var(--error-text);
+  background: var(--error-bg);
 }
 
 .quote {
-  border-left: 3px solid #e3b341;
-  background: #fdf6e3;
+  border-left: 3px solid var(--quote-border);
+  background: var(--quote-bg);
   padding: 6px 9px;
   border-radius: 0 6px 6px 0;
   font-style: italic;
-  color: #6b5d33;
+  color: var(--quote-text);
   font-size: 11.5px;
   line-height: 1.5;
   margin: 0 12px 8px;
@@ -137,14 +138,14 @@ body {
   display: block;
   width: calc(100% - 24px);
   margin: 0 12px 4px;
-  border: 1px solid #e4e2da;
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   padding: 8px 10px;
   font: inherit;
   font-size: 12.5px;
   line-height: 1.5;
-  color: #3a3a35;
-  background: #fbfaf8;
+  color: var(--body-text);
+  background: var(--input-bg);
   resize: none;
   field-sizing: content;
   min-height: 64px;
@@ -152,8 +153,11 @@ body {
 }
 .prompt-input:focus {
   outline: none;
-  border-color: #b9b1ea;
-  background: #fff;
+  border-color: var(--accent-focus);
+  background: var(--surface);
+}
+.prompt-input::placeholder {
+  color: var(--faint);
 }
 
 .card-foot {
@@ -163,9 +167,9 @@ body {
   padding: 4px 12px 10px;
 }
 button.primary {
-  border: 1px solid #c9c3f0;
-  background: #8f87e8;
-  color: #fff;
+  border: 1px solid var(--accent-border);
+  background: var(--accent);
+  color: var(--accent-contrast);
   font-weight: 600;
   font-size: 12px;
   padding: 5px 12px;
@@ -177,23 +181,23 @@ button.primary:disabled {
   cursor: default;
 }
 button.primary:not(:disabled):hover {
-  background: #7d74e0;
+  background: var(--accent-hover);
 }
 button.ghost {
-  border: 1px solid #dcdbd6;
-  background: #fff;
-  color: #6b675c;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
   font-size: 11.5px;
   padding: 4px 9px;
   border-radius: 8px;
   cursor: pointer;
 }
 button.ghost:hover {
-  background: #f6f5f1;
+  background: var(--surface-muted);
 }
 .hint {
   font-size: 10px;
-  color: #b6b1a4;
+  color: var(--disabled-text);
 }
 
 /* ---------- response body ---------- */
@@ -201,7 +205,7 @@ button.ghost:hover {
   padding: 2px 12px 12px;
   font-size: 12.5px;
   line-height: 1.6;
-  color: #3a3a35;
+  color: var(--body-text);
   word-break: break-word;
   max-height: 400px;
   overflow-y: auto;
@@ -217,7 +221,8 @@ button.ghost:hover {
   -webkit-user-select: text;
 }
 .resp ::selection {
-  background: #ffe58a;
+  background: var(--selection-bg);
+  color: var(--selection-text);
 }
 
 /* markdown typography */
@@ -259,20 +264,20 @@ button.ghost:hover {
 .resp blockquote {
   margin: 4px 0 8px;
   padding: 2px 10px;
-  border-left: 3px solid #e0ddd5;
-  color: #6b675c;
+  border-left: 3px solid var(--divider);
+  color: var(--muted);
 }
 .resp code {
-  background: #f4f2ec;
-  border: 1px solid #e8e6df;
+  background: var(--code-bg);
+  border: 1px solid var(--border-soft);
   border-radius: 4px;
   padding: 0 4px;
   font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   font-size: 11.5px;
 }
 .resp pre {
-  background: #f7f5f0;
-  border: 1px solid #e4e2da;
+  background: var(--pre-bg);
+  border: 1px solid var(--input-border);
   border-radius: 8px;
   padding: 8px 10px;
   overflow-x: auto;
@@ -290,20 +295,20 @@ button.ghost:hover {
 }
 .resp th,
 .resp td {
-  border: 1px solid #e0ddd5;
+  border: 1px solid var(--divider);
   padding: 3px 8px;
   text-align: left;
 }
 .resp th {
-  background: #f6f5f1;
+  background: var(--surface-muted);
 }
 .resp hr {
   border: none;
-  border-top: 1px solid #e0ddd5;
+  border-top: 1px solid var(--divider);
   margin: 10px 0;
 }
 .resp a {
-  color: #6b5ca8;
+  color: var(--asst-text);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -338,11 +343,11 @@ button.ghost:hover {
     linear-gradient(
       to top left,
       transparent 0 30%,
-      #b6b1a4 30% 37%,
+      var(--disabled-text) 30% 37%,
       transparent 37% 47%,
-      #b6b1a4 47% 54%,
+      var(--disabled-text) 47% 54%,
       transparent 54% 64%,
-      #b6b1a4 64% 71%,
+      var(--disabled-text) 64% 71%,
       transparent 71%
     )
     content-box;
@@ -350,7 +355,7 @@ button.ghost:hover {
 }
 .resize-grip:hover {
   opacity: 1;
-  background-color: #f1efe9;
+  background-color: var(--chip-bg);
 }
 
 .status-dot {
@@ -360,17 +365,17 @@ button.ghost:hover {
   flex-shrink: 0;
 }
 .status-dot.streaming {
-  background: #e3b341;
+  background: var(--quote-border);
   animation: pulse 1s infinite;
 }
 .status-dot.done {
-  background: #9dc79a;
+  background: var(--success);
 }
 .status-dot.error {
-  background: #d97757;
+  background: var(--error-dot);
 }
 .status-dot.stopped {
-  background: #b6b1a4;
+  background: var(--disabled-text);
 }
 @keyframes pulse {
   50% {
@@ -382,7 +387,7 @@ button.ghost:hover {
   display: inline-block;
   width: 7px;
   height: 14px;
-  background: #8f87e8;
+  background: var(--accent);
   margin-left: 2px;
   vertical-align: text-bottom;
   animation: pulse 1s infinite;
@@ -392,9 +397,9 @@ button.ghost:hover {
   display: inline-block;
   font-size: 10.5px;
   font-style: italic;
-  color: #a1741f;
-  background: #fdf3dd;
-  border: 1px solid #f0dcb0;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border: 1px solid var(--warning-border);
   border-radius: 999px;
   padding: 1px 8px;
   margin: 2px 0 8px;
@@ -410,10 +415,10 @@ button.ghost:hover {
 }
 .extensions-panel {
   width: min(540px, calc(100vw - 32px));
-  background: #fff;
-  border: 1px solid #dcdbd6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: 0 4px 14px rgba(30, 28, 20, 0.05);
+  box-shadow: 0 4px 14px var(--shadow-soft);
   font-size: 12px;
 }
 .extensions-panel > summary {
@@ -423,7 +428,7 @@ button.ghost:hover {
 }
 .extensions-panel > summary .hint {
   margin-left: 10px;
-  color: #8a8578;
+  color: var(--faint);
 }
 .extensions-body {
   max-height: min(520px, 60vh);
@@ -438,11 +443,11 @@ button.ghost:hover {
 }
 .extensions-note {
   font-size: 11px;
-  color: #6b675c;
+  color: var(--muted);
   margin: 6px 0 9px;
 }
 .extension-entry {
-  border-top: 1px solid #eeece6;
+  border-top: 1px solid var(--entry-border);
   padding: 7px 0;
 }
 .extension-entry > summary {
@@ -451,11 +456,11 @@ button.ghost:hover {
 }
 .extension-entry .hint {
   margin-left: 8px;
-  color: #8a8578;
+  color: var(--faint);
 }
 .extension-meta {
   font-size: 11px;
-  color: #6b675c;
+  color: var(--muted);
   margin: 5px 0 0 12px;
   overflow-wrap: anywhere;
 }
@@ -473,10 +478,10 @@ button.ghost:hover {
 }
 .extension-status {
   font-size: 10px;
-  background: #f1efe9;
+  background: var(--chip-bg);
   padding: 2px 7px;
   border-radius: 999px;
-  color: #6b675c;
+  color: var(--muted);
 }
 .extension-error,
 .extension-warning {
@@ -487,12 +492,12 @@ button.ghost:hover {
   overflow-wrap: anywhere;
 }
 .extension-error {
-  background: #f7ece7;
-  color: #a1512d;
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 .extension-warning {
-  background: #fdf6e3;
-  color: #6b5d33;
+  background: var(--quote-bg);
+  color: var(--quote-text);
 }
 .extension-error code,
 .extension-warning code {
@@ -506,20 +511,20 @@ button.ghost:hover {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
-  background: #fff;
-  border: 1px solid #dcdbd6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 8px 10px;
-  box-shadow: 0 4px 14px rgba(30, 28, 20, 0.06);
+  box-shadow: 0 4px 14px var(--shadow);
 }
 .toolbar select {
   font: inherit;
   font-size: 12px;
   padding: 4px 6px;
   border-radius: 7px;
-  border: 1px solid #dcdbd6;
-  background: #fbfaf8;
-  color: #3a3a35;
+  border: 1px solid var(--border);
+  background: var(--input-bg);
+  color: var(--body-text);
   max-width: 220px;
 }
 
@@ -532,11 +537,11 @@ button.ghost:hover {
   width: 24px;
   height: 24px;
   padding: 0;
-  border: 1px solid #c9c3f0;
+  border: 1px solid var(--accent-border);
   border-radius: 50%;
-  background: #fff;
-  color: #7d74e0;
-  box-shadow: 0 2px 7px rgba(30, 28, 20, 0.12);
+  background: var(--surface);
+  color: var(--accent-hover);
+  box-shadow: 0 2px 7px var(--shadow-plus);
   font-size: 19px;
   line-height: 1;
   cursor: pointer;
@@ -552,9 +557,9 @@ button.ghost:hover {
 }
 .node-plus:hover,
 .node-plus:focus-visible {
-  background: #8f87e8;
-  color: #fff;
-  outline: 2px solid #c9c3f0;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  outline: 2px solid var(--accent-border);
   outline-offset: 2px;
 }
 .node-plus-top {
