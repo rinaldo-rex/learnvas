@@ -201,7 +201,6 @@ button.ghost:hover {
   font-size: 12.5px;
   line-height: 1.6;
   color: #3a3a35;
-  white-space: pre-wrap;
   word-break: break-word;
   max-height: 400px;
   overflow-y: auto;
@@ -209,6 +208,97 @@ button.ghost:hover {
 }
 .resp ::selection {
   background: #ffe58a;
+}
+
+/* markdown typography */
+.resp p {
+  margin: 0 0 8px;
+}
+.resp h1,
+.resp h2,
+.resp h3,
+.resp h4,
+.resp h5,
+.resp h6 {
+  margin: 10px 0 6px;
+  line-height: 1.3;
+  font-size: 13px;
+}
+.resp h1 {
+  font-size: 14.5px;
+}
+.resp h2 {
+  font-size: 13.5px;
+}
+.resp h1:first-child,
+.resp h2:first-child,
+.resp p:first-child {
+  margin-top: 2px;
+}
+.resp ul,
+.resp ol {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+.resp li {
+  margin: 2px 0;
+}
+.resp li > p {
+  margin: 2px 0;
+}
+.resp blockquote {
+  margin: 4px 0 8px;
+  padding: 2px 10px;
+  border-left: 3px solid #e0ddd5;
+  color: #6b675c;
+}
+.resp code {
+  background: #f4f2ec;
+  border: 1px solid #e8e6df;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+.resp pre {
+  background: #f7f5f0;
+  border: 1px solid #e4e2da;
+  border-radius: 8px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  margin: 0 0 8px;
+}
+.resp pre code {
+  background: none;
+  border: none;
+  padding: 0;
+}
+.resp table {
+  border-collapse: collapse;
+  margin: 0 0 8px;
+  font-size: 11.5px;
+}
+.resp th,
+.resp td {
+  border: 1px solid #e0ddd5;
+  padding: 3px 8px;
+  text-align: left;
+}
+.resp th {
+  background: #f6f5f1;
+}
+.resp hr {
+  border: none;
+  border-top: 1px solid #e0ddd5;
+  margin: 10px 0;
+}
+.resp a {
+  color: #6b5ca8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.resp img {
+  max-width: 100%;
 }
 
 /* when the user has set an explicit height, the card fills it and the

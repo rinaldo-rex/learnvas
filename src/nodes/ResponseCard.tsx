@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import remarkBreaks from 'remark-breaks'
+import type { Components } from 'react-markdown'
 import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
 import { useOverflowing } from '../lib/useOverflow'
@@ -8,6 +12,12 @@ import type { ResponseNode } from '../types'
 const trim = (s: string, n = 26) => {
   const t = s.replace(/\s+/g, ' ').trim()
   return t.length > n ? t.slice(0, n) + '…' : t
+}
+
+// Module-level so the markdown pipeline identity is stable across renders.
+const remarkPlugins = [remarkGfm, remarkBreaks]
+const mdComponents: Components = {
+  a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
 }
 
 export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
@@ -163,7 +173,15 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
           onMouseUp={checkSelection}
         >
           {streaming && data.activity && <div className="tool-note">{data.activity}</div>}
-          {data.text || (streaming ? '' : '(empty)')}
+          {data.text ? (
+            <ReactMarkdown remarkPlugins={remarkPlugins} components={mdComponents}>
+              {data.text}
+            </ReactMarkdown>
+          ) : streaming ? (
+            ''
+          ) : (
+            '(empty)'
+          )}
           {streaming && <span className="caret" />}
         </div>
       )}
