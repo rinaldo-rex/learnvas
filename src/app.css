@@ -269,6 +269,7 @@ button.ghost:hover {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   background: #fff;
   border: 1px solid #dcdbd6;
   border-radius: 10px;

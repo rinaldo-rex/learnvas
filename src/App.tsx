@@ -66,6 +66,34 @@ function Canvas() {
   selectedModelRef.current = selectedModel
   const aborts = useRef(new Map<string, AbortController>())
 
+  /* ---------- provider → model selection ---------- */
+  const providers = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const m of models) counts.set(m.provider, (counts.get(m.provider) ?? 0) + 1)
+    return [...counts.entries()].sort(([a], [b]) => a.localeCompare(b))
+  }, [models])
+
+  // selectedModel is always "provider/model-id" or '' (pi default), so the
+  // active provider is just the segment before the first slash.
+  const selectedProvider = selectedModel ? selectedModel.slice(0, selectedModel.indexOf('/')) : ''
+  const providerModels = useMemo(
+    () => models.filter((m) => m.provider === selectedProvider),
+    [models, selectedProvider],
+  )
+  const pickProvider = useCallback(
+    (provider: string) => {
+      if (!provider) {
+        setSelectedModel('')
+        return
+      }
+      // Selecting a provider immediately picks its first model — the model
+      // dropdown then narrows to that provider alone.
+      const first = models.find((m) => m.provider === provider)
+      setSelectedModel(first ? first.id : '')
+    },
+    [models],
+  )
+
   /* ---------- persistence (debounced) ---------- */
   useEffect(() => {
     const t = setTimeout(() => {
@@ -388,16 +416,32 @@ function Canvas() {
                 ＋ New prompt
               </button>
               <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                title="Model used for new responses"
+                value={selectedProvider}
+                onChange={(e) => pickProvider(e.target.value)}
+                title="Provider"
               >
                 <option value="">pi default</option>
-                {models.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.name} ({m.provider})
+                {providers.map(([p, count]) => (
+                  <option key={p} value={p}>
+                    {p} ({count})
                   </option>
                 ))}
+              </select>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                disabled={!selectedProvider}
+                title="Model used for new responses"
+              >
+                {selectedProvider ? (
+                  providerModels.map((m) => (
+                    <option key={m.id} value={m.id} title={m.id}>
+                      {m.name}
+                    </option>
+                  ))
+                ) : (
+                  <option value="">pi default</option>
+                )}
               </select>
               <button
                 className="ghost"
