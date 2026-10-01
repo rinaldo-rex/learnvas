@@ -154,7 +154,7 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
       {!data.collapsed && (
         <div
           ref={bodyRef}
-          className={`resp sel-ok ${bodyScrolls ? 'nowheel' : ''}`}
+          className={`resp sel-ok nodrag ${bodyScrolls ? 'nowheel' : ''}`}
           onMouseUp={checkSelection}
         >
           {streaming && data.activity && <div className="tool-note">{data.activity}</div>}

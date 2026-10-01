@@ -43,7 +43,7 @@ export function BranchComposer({ x, y, quote, modelLabel, onSend, onClose }: Bra
   }
 
   return (
-    <div ref={panelRef} className="branch-composer nowheel" style={{ left: x, top: y }}>
+    <div ref={panelRef} className="branch-composer nowheel nodrag" style={{ left: x, top: y }}>
       <div className="quote">“{quote}”</div>
       <textarea
         ref={taRef}
