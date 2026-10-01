@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as RPointer
 import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react'
 import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
+import { useOverflowing } from '../lib/useOverflow'
 import type { ResponseNode } from '../types'
 
 const trim = (s: string, n = 26) => {
@@ -15,6 +16,9 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
   const [chip, setChip] = useState<{ x: number; y: number; text: string } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  // Only block canvas wheel-pan while the body actually scrolls — wheel over
+  // a short card keeps zooming the canvas.
+  const bodyScrolls = useOverflowing(bodyRef, [data.text, data.height, data.collapsed])
 
   /* ---------- corner resize ---------- */
   const drag = useRef<{ x: number; y: number; w: number; h: number; zoom: number } | null>(null)
@@ -153,7 +157,11 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
       </div>
 
       {!data.collapsed && (
-        <div ref={bodyRef} className="resp sel-ok" onMouseUp={checkSelection}>
+        <div
+          ref={bodyRef}
+          className={`resp sel-ok ${bodyScrolls ? 'nowheel' : ''}`}
+          onMouseUp={checkSelection}
+        >
           {streaming && data.activity && <div className="tool-note">{data.activity}</div>}
           {data.text || (streaming ? '' : '(empty)')}
           {streaming && <span className="caret" />}

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useApp } from '../actions'
+import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
 
 const oneLine = (s: string, n = 46) => {
@@ -11,6 +12,9 @@ const oneLine = (s: string, n = 46) => {
 export function PromptCard({ id, data }: NodeProps<PromptNode>) {
   const { updatePrompt, sendPrompt, removeNode } = useApp()
   const ref = useRef<HTMLTextAreaElement>(null)
+  const quoteRef = useRef<HTMLDivElement>(null)
+  const inputScrolls = useOverflowing(ref, [data.text])
+  const quoteScrolls = useOverflowing(quoteRef, [data.quote])
 
   useEffect(() => {
     if (data.focus && ref.current) {
@@ -48,10 +52,14 @@ export function PromptCard({ id, data }: NodeProps<PromptNode>) {
 
       {!collapsed && (
         <>
-          {data.quote && <div className="quote">“{data.quote}”</div>}
+          {data.quote && (
+            <div ref={quoteRef} className={`quote ${quoteScrolls ? 'nowheel' : ''}`}>
+              “{data.quote}”
+            </div>
+          )}
           <textarea
             ref={ref}
-            className="prompt-input"
+            className={`prompt-input ${inputScrolls ? 'nowheel' : ''}`}
             value={data.text}
             placeholder="What do you want to understand?"
             onChange={(e) => updatePrompt(id, { text: e.target.value })}
