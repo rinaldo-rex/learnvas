@@ -8,9 +8,10 @@ export interface AppActions {
   updatePrompt(id: string, patch: Partial<PromptData>): void
   removeNode(id: string): void
   /** Send (or re-run with the currently selected model) the prompt card's text. */
-  sendPrompt(promptId: string, opts?: { rerun?: boolean }): void
-  /** Create a child prompt card branching from a response, seeded with the selected excerpt. */
-  branchFrom(responseId: string, quote: string): void
+  sendPrompt(promptId: string): void
+  /** Create a sent prompt card branching from a node (response or prompt),
+   *  quote the selected excerpt, and immediately stream a response. */
+  branchSend(sourceId: string, quote: string, text: string): void
   /** Persist a user resize of a response card (updates node style + data). */
   resizeNode(id: string, width: number, height: number): void
   stopStream(responseId: string): void

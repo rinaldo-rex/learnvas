@@ -210,45 +210,41 @@ function Canvas() {
 
   /* ---------- conversation graph ---------- */
 
-  /** Walk from a prompt card up to the root, collecting [user, assistant] pairs. */
-  const buildChain = useCallback((promptId: string): ChatMsg[] => {
+  /** Walk from a prompt card up to the root, collecting [user, assistant] pairs.
+   *  Parent edges are either response→prompt (branched from an answer) or
+   *  prompt→prompt (branched from a quoted part of a prompt). `extraEdge`
+   *  lets a just-created branch participate before state has committed. */
+  const buildChain = useCallback((promptId: string, extraEdge?: Edge): ChatMsg[] => {
     const byId = new Map(nodesRef.current.map((n) => [n.id, n]))
-    const es = edgesRef.current
-    type Seg = { promptText: string; quote?: string; responseText?: string }
-    const segs: Seg[] = []
-    let curId: string | undefined = promptId
-    let guard = 0
-    while (curId && guard++ < 1000) {
-      const prompt = byId.get(curId)
-      if (!prompt || prompt.type !== 'prompt') break
-      const d = prompt.data
-      const parentEdge = es.find((e) => e.target === prompt.id && byId.get(e.source)?.type === 'response')
-      const response = parentEdge ? (byId.get(parentEdge.source) as ResponseNode | undefined) : undefined
-      segs.push({ promptText: d.text, quote: d.quote, responseText: response?.data.text })
-      curId = response?.data.sourcePromptId
-    }
-    segs.reverse()
+    const es = extraEdge ? [...edgesRef.current, extraEdge] : edgesRef.current
     const msgs: ChatMsg[] = []
-    for (const s of segs) {
-      const userContent =
-        (s.quote ? `Regarding this excerpt from the previous answer:\n"${s.quote}"\n\n` : '') +
-        (s.promptText.trim() || '(empty question)')
-      msgs.push({ role: 'user', content: userContent })
-      if (s.responseText !== undefined) {
-        msgs.push({ role: 'assistant', content: s.responseText || '(no answer recorded)' })
+    let cur: string | undefined = promptId
+    let guard = 0
+    while (cur && guard++ < 1000) {
+      const node = byId.get(cur)
+      if (!node) break
+      if (node.type === 'prompt') {
+        const d = node.data
+        const userContent =
+          (d.quote ? `Regarding this excerpt from the previous message:\n"${d.quote}"\n\n` : '') +
+          (d.text.trim() || '(empty question)')
+        msgs.push({ role: 'user', content: userContent })
+        const inEdge = es.find((e) => e.target === node.id)
+        const src = inEdge ? byId.get(inEdge.source) : undefined
+        cur = src?.type === 'response' || src?.type === 'prompt' ? src.id : undefined
+      } else {
+        const d = (node as ResponseNode).data
+        msgs.push({ role: 'assistant', content: d.text || '(no answer recorded)' })
+        cur = d.sourcePromptId
       }
     }
-    return msgs
+    return msgs.reverse()
   }, [])
 
-  const sendPrompt = useCallback(
-    (promptId: string, opts?: { rerun?: boolean }) => {
-      const prompt = nodesRef.current.find((n) => n.id === promptId)
-      if (!prompt || prompt.type !== 'prompt' || !prompt.data.text.trim()) return
-      const messages = buildChain(promptId)
-
-      patchNode(promptId, { sent: true, collapsed: true, focus: false })
-
+  /** Create the response card for a prompt and stream into it. */
+  const startResponse = useCallback(
+    (prompt: PromptNode, messages: ChatMsg[]) => {
+      const promptId = prompt.id
       // Stack multiple responses of the same prompt vertically.
       const siblings = edgesRef.current.filter((e) => e.source === promptId).length
       const pw = prompt.measured?.width ?? 280
@@ -348,31 +344,47 @@ function Canvas() {
         },
       })
     },
-    [buildChain, patchNode, setEdges, setNodes],
+    [setEdges, setNodes],
   )
 
-  const branchFrom = useCallback(
-    (responseId: string, quote: string) => {
-      const resp = nodesRef.current.find((n) => n.id === responseId)
-      if (!resp || resp.type !== 'response') return
-      const rw = resp.measured?.width ?? 340
-      const promptId = addPromptNode(
-        { x: resp.position.x + rw + 90, y: resp.position.y - 10 },
-        true,
-        quote,
-      )
-      setEdges((es) => [
-        ...es,
-        {
-          id: `e-${responseId}-${promptId}`,
-          source: responseId,
-          target: promptId,
-          sourceHandle: 's',
-          targetHandle: 't',
-        },
-      ])
+  const sendPrompt = useCallback(
+    (promptId: string) => {
+      const prompt = nodesRef.current.find((n) => n.id === promptId)
+      if (!prompt || prompt.type !== 'prompt' || !prompt.data.text.trim()) return
+      const messages = buildChain(promptId)
+      patchNode(promptId, { sent: true, collapsed: true, focus: false })
+      startResponse(prompt, messages)
     },
-    [addPromptNode, setEdges],
+    [buildChain, patchNode, startResponse],
+  )
+
+  /** Create a sent prompt card branching from a node (response OR prompt),
+   *  with the selected excerpt quoted, and immediately stream a response
+   *  using the currently selected model. */
+  const branchSend = useCallback(
+    (sourceId: string, quote: string, text: string) => {
+      const source = nodesRef.current.find((n) => n.id === sourceId)
+      if (!source) return
+      const sw = source.measured?.width ?? 340
+      const promptId = crypto.randomUUID()
+      const promptNode: PromptNode = {
+        id: promptId,
+        type: 'prompt',
+        position: { x: source.position.x + sw + 90, y: source.position.y - 10 },
+        data: { kind: 'prompt', text, sent: true, collapsed: true, quote },
+      }
+      const parentEdge: Edge = {
+        id: `e-${sourceId}-${promptId}`,
+        source: sourceId,
+        target: promptId,
+        sourceHandle: 's',
+        targetHandle: 't',
+      }
+      setNodes((ns) => [...ns, promptNode])
+      setEdges((es) => [...es, parentEdge])
+      startResponse(promptNode, buildChain(promptId, parentEdge))
+    },
+    [buildChain, setEdges, setNodes, startResponse],
   )
 
   const resizeNode = useCallback(
@@ -415,7 +427,7 @@ function Canvas() {
       updatePrompt: patchNode,
       removeNode,
       sendPrompt,
-      branchFrom,
+      branchSend,
       resizeNode,
       stopStream,
       newPrompt,
@@ -423,7 +435,7 @@ function Canvas() {
       selectedModel,
       setSelectedModel,
     }),
-    [patchNode, removeNode, sendPrompt, branchFrom, resizeNode, stopStream, newPrompt, models, selectedModel],
+    [patchNode, removeNode, sendPrompt, branchSend, resizeNode, stopStream, newPrompt, models, selectedModel],
   )
 
   return (

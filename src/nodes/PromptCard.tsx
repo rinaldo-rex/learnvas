@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as RMouseEvent } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useApp } from '../actions'
+import { modelLabel } from '../lib/api'
 import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
+import { BranchComposer } from './BranchComposer'
 
 const oneLine = (s: string, n = 46) => {
   const t = s.replace(/\s+/g, ' ').trim()
@@ -10,11 +12,29 @@ const oneLine = (s: string, n = 46) => {
 }
 
 export function PromptCard({ id, data }: NodeProps<PromptNode>) {
-  const { updatePrompt, sendPrompt, removeNode } = useApp()
+  const { updatePrompt, sendPrompt, removeNode, branchSend, models, selectedModel } = useApp()
   const ref = useRef<HTMLTextAreaElement>(null)
   const quoteRef = useRef<HTMLDivElement>(null)
   const inputScrolls = useOverflowing(ref, [data.text])
   const quoteScrolls = useOverflowing(quoteRef, [data.quote])
+  const [composer, setComposer] = useState<{ x: number; y: number; text: string } | null>(null)
+
+  // Selecting text inside the prompt opens the branch composer.
+  const onInputMouseUp = (e: RMouseEvent<HTMLTextAreaElement>) => {
+    const ta = e.currentTarget
+    const start = ta.selectionStart ?? 0
+    const end = ta.selectionEnd ?? 0
+    const text = start !== end ? ta.value.slice(start, end).trim() : ''
+    if (!text) {
+      setComposer(null)
+      return
+    }
+    setComposer({
+      x: Math.min(e.clientX + 10, window.innerWidth - 320),
+      y: Math.min(e.clientY + 14, window.innerHeight - 240),
+      text,
+    })
+  }
 
   useEffect(() => {
     if (data.focus && ref.current) {
@@ -63,13 +83,14 @@ export function PromptCard({ id, data }: NodeProps<PromptNode>) {
             value={data.text}
             placeholder="What do you want to understand?"
             onChange={(e) => updatePrompt(id, { text: e.target.value })}
+            onMouseUp={onInputMouseUp}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) sendPrompt(id)
             }}
           />
           <div className="card-foot">
             {data.sent ? (
-              <button className="primary" onClick={() => sendPrompt(id, { rerun: true })}>
+              <button className="primary" onClick={() => sendPrompt(id)}>
                 ↻ Re-run
               </button>
             ) : (
@@ -84,6 +105,20 @@ export function PromptCard({ id, data }: NodeProps<PromptNode>) {
             <span className="hint">⌘/Ctrl + ↵</span>
           </div>
         </>
+      )}
+
+      {composer && (
+        <BranchComposer
+          x={composer.x}
+          y={composer.y}
+          quote={composer.text}
+          modelLabel={modelLabel(selectedModel, models)}
+          onSend={(text) => {
+            branchSend(id, composer.text, text)
+            setComposer(null)
+          }}
+          onClose={() => setComposer(null)}
+        />
       )}
     </div>
   )

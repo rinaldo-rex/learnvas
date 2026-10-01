@@ -393,22 +393,48 @@ button.ghost:hover {
   margin: 2px 0 8px;
 }
 
-.branch-chip {
+/* ---------- branch composer ---------- */
+.branch-composer {
   position: fixed;
-  z-index: 1000;
-  background: #e3b341;
-  color: #3d2e00;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 6px 11px;
-  border-radius: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 16px rgba(60, 45, 0, 0.25);
-  max-width: 300px;
+  z-index: 1001;
+  width: 300px;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e3b341;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(60, 45, 0, 0.22);
 }
-.branch-chip span {
-  opacity: 0.75;
-  font-weight: 500;
+.branch-composer .quote {
+  margin: 0 0 6px;
+  max-height: 76px;
+}
+.branch-composer textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid #e4e2da;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #3a3a35;
+  background: #fbfaf8;
+  resize: none;
+  field-sizing: content;
+  min-height: 54px;
+  max-height: 150px;
+}
+.branch-composer textarea:focus {
+  outline: none;
+  border-color: #b9b1ea;
+  background: #fff;
+}
+.composer-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
 }
 
 /* ---------- toolbar ---------- */

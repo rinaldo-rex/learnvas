@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { useCallback, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -8,11 +8,7 @@ import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
 import { useOverflowing } from '../lib/useOverflow'
 import type { ResponseNode } from '../types'
-
-const trim = (s: string, n = 26) => {
-  const t = s.replace(/\s+/g, ' ').trim()
-  return t.length > n ? t.slice(0, n) + '…' : t
-}
+import { BranchComposer } from './BranchComposer'
 
 // Module-level so the markdown pipeline identity is stable across renders.
 const remarkPlugins = [remarkGfm, remarkBreaks]
@@ -21,9 +17,9 @@ const mdComponents: Components = {
 }
 
 export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
-  const { patchNode, removeNode, branchFrom, stopStream, models, resizeNode } = useApp()
+  const { patchNode, removeNode, branchSend, stopStream, models, selectedModel, resizeNode } = useApp()
   const { getZoom } = useReactFlow()
-  const [chip, setChip] = useState<{ x: number; y: number; text: string } | null>(null)
+  const [composer, setComposer] = useState<{ x: number; y: number; text: string } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   // Only block canvas wheel-pan while the body actually scrolls — wheel over
@@ -92,37 +88,26 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
     [commitPending],
   )
 
-  // Show the branch chip near the current text selection inside this card's body.
+  // Open the branch composer near the current text selection in this card.
   const checkSelection = useCallback(() => {
     const sel = window.getSelection()
     if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
-      setChip(null)
+      setComposer(null)
       return
     }
     const text = sel.toString().trim()
     const range = sel.getRangeAt(0)
     if (!text || !bodyRef.current?.contains(range.commonAncestorContainer)) {
-      setChip(null)
+      setComposer(null)
       return
     }
     const rect = range.getBoundingClientRect()
-    setChip({
-      x: Math.min(rect.right + 4, window.innerWidth - 310),
-      y: rect.bottom + 6,
+    setComposer({
+      x: Math.min(rect.right + 4, window.innerWidth - 320),
+      y: Math.min(rect.bottom + 6, window.innerHeight - 240),
       text,
     })
   }, [])
-
-  // Dismiss the chip whenever the selection collapses.
-  useEffect(() => {
-    if (!chip) return
-    const h = () => {
-      const sel = window.getSelection()
-      if (!sel || sel.isCollapsed) setChip(null)
-    }
-    document.addEventListener('selectionchange', h)
-    return () => document.removeEventListener('selectionchange', h)
-  }, [chip])
 
   const streaming = data.status === 'streaming'
 
@@ -186,20 +171,19 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
         </div>
       )}
 
-      {chip && (
-        <div
-          className="branch-chip"
-          style={{ left: chip.x, top: chip.y }}
-          onMouseDown={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            branchFrom(id, chip.text)
-            setChip(null)
+      {composer && (
+        <BranchComposer
+          x={composer.x}
+          y={composer.y}
+          quote={composer.text}
+          modelLabel={modelLabel(selectedModel, models)}
+          onSend={(text) => {
+            branchSend(id, composer.text, text)
+            setComposer(null)
             window.getSelection()?.removeAllRanges()
           }}
-        >
-          ↳ Branch from “<span>{trim(chip.text)}</span>”
-        </div>
+          onClose={() => setComposer(null)}
+        />
       )}
 
       {!data.collapsed && (
