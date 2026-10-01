@@ -24,6 +24,13 @@ When the student quotes an excerpt from an earlier answer, address that excerpt 
 Assume curiosity, not expertise. Prefer understanding over completeness, and it is fine to end with one inviting follow-up question.
 You are a text-only tutor: never mention tools, files, code, or execution.`
 
+const TUTOR_SYSTEM_WEB = `${TUTOR_SYSTEM}
+You also have web access (web_search, fetch_content, and friends). Use it when the question needs current information, precise facts you are not fully sure of, or sources the student can read for themselves — prefer searching over guessing. When you use the web, name your sources with links in the answer.`
+
+// Escape hatch: LEARNVAS_WEB_ACCESS=0 disables web tools for chat sessions.
+const WEB_ACCESS = process.env.LEARNVAS_WEB_ACCESS !== '0'
+const WEB_TOOLS = ['web_search', 'source_check', 'fetch_content', 'get_search_content']
+
 const modelRuntime = await ModelRuntime.create()
 
 function parseModelId(id) {
@@ -32,7 +39,7 @@ function parseModelId(id) {
   return i > 0 ? { provider: id.slice(0, i), id: id.slice(i + 1) } : null
 }
 
-async function makeSession(modelRef, { loadExtensions = false } = {}) {
+async function makeSession(modelRef, { loadExtensions = false, webAccess = false } = {}) {
   const loader = new DefaultResourceLoader({
     cwd: process.cwd(),
     agentDir: getAgentDir(),
@@ -41,9 +48,12 @@ async function makeSession(modelRef, { loadExtensions = false } = {}) {
     // (see warmup below) so extension-registered providers/virtual models
     // (pi.registerProvider / pi.registerVirtualModel) land in the shared
     // ModelRuntime; per-request chat sessions skip them.
-    systemPrompt: TUTOR_SYSTEM,
+    systemPrompt: webAccess ? TUTOR_SYSTEM_WEB : TUTOR_SYSTEM,
     noContextFiles: true,
     noExtensions: !loadExtensions,
+    // Web sessions load ONLY the pi-web-access extension — its tools come
+    // with it; no other user extension, skill, or context file is touched.
+    ...(webAccess ? { additionalExtensionPaths: ['npm:pi-web-access'] } : {}),
     noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
@@ -52,7 +62,9 @@ async function makeSession(modelRef, { loadExtensions = false } = {}) {
   const { session } = await createAgentSession({
     resourceLoader: loader,
     sessionManager: SessionManager.inMemory(),
-    noTools: true,
+    // Web sessions activate just the pi-web-access tools; everything else
+    // (file tools, bash, …) stays off. Otherwise: fully toolless.
+    ...(webAccess ? { tools: WEB_TOOLS } : { noTools: true }),
     modelRuntime,
     ...(modelRef ? { model: modelRuntime.getModel(modelRef.provider, modelRef.id) } : {}),
   })
@@ -139,7 +151,7 @@ const server = http.createServer((req, res) => {
 
       let session = null
       try {
-        session = await makeSession(modelRef)
+        session = await makeSession(modelRef, { webAccess: WEB_ACCESS })
       } catch (e) {
         json(res, 500, { error: String(e?.message ?? e) })
         return
@@ -164,6 +176,10 @@ const server = http.createServer((req, res) => {
         const unsub = session.subscribe((ev) => {
           if (ev.type === 'message_update' && ev.assistantMessageEvent?.type === 'text_delta' && !closed) {
             sse(res, 'delta', { text: ev.assistantMessageEvent.delta })
+          } else if (ev.type === 'tool_execution_start' && !closed) {
+            sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'start' })
+          } else if (ev.type === 'tool_execution_end' && !closed) {
+            sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'end' })
           } else if (
             ev.type === 'message_end' &&
             ev.message?.role === 'assistant' &&

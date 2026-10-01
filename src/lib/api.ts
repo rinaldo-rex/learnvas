@@ -24,13 +24,14 @@ export interface StreamHandlers {
   onDelta(text: string): void
   onDone(): void
   onError(message: string): void
+  onTool?(name: string, phase: 'start' | 'end'): void
 }
 
 /** POST /api/chat and consume the SSE stream. On abort: silently stops (no onDone/onError). */
 export function streamChat(
   opts: { model: string; messages: ChatMsg[]; signal: AbortSignal } & StreamHandlers,
 ): void {
-  const { model, messages, signal, onDelta, onDone, onError } = opts
+  const { model, messages, signal, onDelta, onDone, onError, onTool } = opts
   void (async () => {
     try {
       const res = await fetch('/api/chat', {
@@ -57,13 +58,16 @@ export function streamChat(
           for (const line of raw.split('\n')) {
             if (!line.startsWith('data: ')) continue
             const evt = JSON.parse(line.slice(6)) as {
-              event: 'delta' | 'done' | 'error'
+              event: 'delta' | 'done' | 'error' | 'tool'
               text?: string
               message?: string
+              name?: string
+              phase?: 'start' | 'end'
             }
             if (evt.event === 'delta' && evt.text) onDelta(evt.text)
             else if (evt.event === 'done') onDone()
             else if (evt.event === 'error') onError(evt.message ?? 'unknown error')
+            else if (evt.event === 'tool' && evt.name) onTool?.(evt.name, evt.phase ?? 'start')
           }
         }
       }

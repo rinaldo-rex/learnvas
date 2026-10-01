@@ -154,6 +154,7 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
 
       {!data.collapsed && (
         <div ref={bodyRef} className="resp sel-ok" onMouseUp={checkSelection}>
+          {streaming && data.activity && <div className="tool-note">{data.activity}</div>}
           {data.text || (streaming ? '' : '(empty)')}
           {streaming && <span className="caret" />}
         </div>

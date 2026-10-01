@@ -22,6 +22,8 @@ export interface ResponseData extends Record<string, unknown> {
   /** User-resized card dimensions (persisted; drive wrapper style + body layout). */
   width?: number
   height?: number
+  /** Transient tool-activity note shown while streaming, e.g. "🔎 web_search…". */
+  activity?: string
 }
 
 export type PromptNode = Node<PromptData, 'prompt'>

@@ -30,8 +30,10 @@ function loadSaved(): { nodes: LVNode[]; edges: Edge[] } | null {
     if (!Array.isArray(j.nodes) || !Array.isArray(j.edges)) return null
     // A reload mid-stream leaves stale status; normalize.
     for (const n of j.nodes) {
-      if (n.type === 'response' && (n.data as ResponseData).status === 'streaming') {
-        ;(n.data as ResponseData).status = 'stopped'
+      if (n.type === 'response') {
+        const d = n.data as ResponseData
+        if (d.status === 'streaming') d.status = 'stopped'
+        d.activity = undefined
       }
       n.selected = false
     }
@@ -103,7 +105,7 @@ function Canvas() {
           JSON.stringify({
             nodes: nodes.map((n) =>
               n.type === 'response' && (n.data as ResponseData).status === 'streaming'
-                ? { ...n, data: { ...n.data, status: 'stopped' } }
+                ? { ...n, data: { ...n.data, status: 'stopped', activity: undefined } }
                 : n,
             ),
             edges,
@@ -314,6 +316,7 @@ function Canvas() {
                   data: {
                     ...n.data,
                     status,
+                    activity: undefined,
                     text:
                       status === 'error'
                         ? (n.data as ResponseData).text + `\n\n⚠️ ${message}`
@@ -333,6 +336,9 @@ function Canvas() {
         onDelta(t) {
           pending += t
           if (!raf) raf = requestAnimationFrame(flush)
+        },
+        onTool(name, phase) {
+          patchNode(respId, { activity: phase === 'start' ? `🔎 ${name}…` : undefined })
         },
         onDone() {
           finish('done')
@@ -393,7 +399,7 @@ function Canvas() {
       setNodes((ns) =>
         ns.map((n) =>
           n.id === respId && n.type === 'response'
-            ? { ...n, data: { ...n.data, status: 'stopped' } }
+            ? { ...n, data: { ...n.data, status: 'stopped', activity: undefined } }
             : n,
         ),
       )

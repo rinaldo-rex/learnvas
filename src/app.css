@@ -291,6 +291,18 @@ button.ghost:hover {
   animation: pulse 1s infinite;
 }
 
+.tool-note {
+  display: inline-block;
+  font-size: 10.5px;
+  font-style: italic;
+  color: #a1741f;
+  background: #fdf3dd;
+  border: 1px solid #f0dcb0;
+  border-radius: 999px;
+  padding: 1px 8px;
+  margin: 2px 0 8px;
+}
+
 .branch-chip {
   position: fixed;
   z-index: 1000;
