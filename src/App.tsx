@@ -16,6 +16,7 @@ import {
 import { AppCtx, type AppActions } from './actions'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
+import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { PromptCard } from './nodes/PromptCard'
 import { ResponseCard } from './nodes/ResponseCard'
 import type { ChatMsg, LVNode, PromptNode, ResponseData, ResponseNode } from './types'
@@ -262,13 +263,23 @@ function Canvas() {
   const startResponse = useCallback(
     (prompt: PromptNode, messages: ChatMsg[]) => {
       const promptId = prompt.id
-      // Stack multiple responses of the same prompt vertically.
-      const siblings = edgesRef.current.filter((e) => e.source === promptId).length
-      const pw = prompt.measured?.width ?? 280
-      const position = {
-        x: prompt.position.x + pw + 90,
-        y: prompt.position.y + siblings * 80,
-      }
+      // Continue away from the parent instead of overlapping it when the
+      // prompt was added to the left or above its source card.
+      const incoming = edgesRef.current.find(e => e.target === promptId)
+      const side = responseSide(incoming?.targetHandle)
+      const siblings = edgesRef.current.filter(e => e.source === promptId && e.sourceHandle === SOURCE_HANDLES[side]).length
+      const layout = attachmentLayout(
+        {
+          ...prompt.position,
+          width: prompt.measured?.width ?? 280,
+          height: prompt.measured?.height ?? 160,
+        },
+        side,
+        // A normal answer can grow to a 400px body plus header. Reserve that
+        // space above the prompt so upward-streaming answers don't cover it.
+        { width: 340, height: 440 },
+        siblings * 80,
+      )
 
       const respId = crypto.randomUUID()
       const model = selectedModelRef.current
@@ -276,7 +287,7 @@ function Canvas() {
         id: respId,
         type: 'response',
         dragHandle: '.card-head',
-        position,
+        position: layout.position,
         data: {
           kind: 'response',
           text: '',
@@ -293,8 +304,8 @@ function Canvas() {
           id: `e-${promptId}-${respId}`,
           source: promptId,
           target: respId,
-          sourceHandle: 's',
-          targetHandle: 't',
+          sourceHandle: layout.sourceHandle,
+          targetHandle: layout.targetHandle,
           animated: true,
         },
       ])
@@ -376,26 +387,35 @@ function Canvas() {
     [buildChain, patchNode, startResponse],
   )
 
-  /** Mouse-up creates a connected draft, not a request. Sending that draft
-   *  later uses the normal conversation-chain and streaming path. */
-  const branchPrompt = useCallback(
-    (sourceId: string, quote: string) => {
+  /** Both text selections and hover + buttons create real connected drafts.
+   *  A response starts only when that draft is sent. */
+  const addAttachedPrompt = useCallback(
+    (sourceId: string, port: ContinuationPort, quote?: string) => {
       const source = nodesRef.current.find((n) => n.id === sourceId)
-      if (!source || !quote.trim()) return
-      const sw = source.measured?.width ?? (source.type === 'prompt' ? 280 : 340)
-      const siblings = edgesRef.current.filter((e) => e.source === sourceId).length
+      if (!source) return
+      const siblings = edgesRef.current.filter(e => e.source === sourceId && e.sourceHandle === SOURCE_HANDLES[port]).length
+      const layout = attachmentLayout(
+        {
+          ...source.position,
+          width: source.measured?.width ?? (source.type === 'prompt' ? 280 : 340),
+          height: source.measured?.height ?? 160,
+        },
+        port,
+        { width: 280, height: quote ? 240 : 160 },
+        siblings * 260,
+      )
       const promptId = crypto.randomUUID()
       const promptNode: PromptNode = {
         id: promptId,
         type: 'prompt',
         dragHandle: '.card-head',
-        position: { x: source.position.x + sw + 90, y: source.position.y + siblings * 260 },
+        position: layout.position,
         data: {
           kind: 'prompt',
           text: '',
           sent: false,
           collapsed: false,
-          quote: quote.trim(),
+          quote: quote?.trim(),
           focus: true,
         },
       }
@@ -403,8 +423,8 @@ function Canvas() {
         id: `e-${sourceId}-${promptId}`,
         source: sourceId,
         target: promptId,
-        sourceHandle: 's',
-        targetHandle: 't',
+        sourceHandle: layout.sourceHandle,
+        targetHandle: layout.targetHandle,
       }
       setNodes((ns) => [...ns, promptNode])
       setEdges((es) => [...es, parentEdge])
@@ -414,6 +434,13 @@ function Canvas() {
       })
     },
     [getZoom, setCenter, setEdges, setNodes],
+  )
+
+  const branchPrompt = useCallback(
+    (sourceId: string, quote: string) => {
+      if (quote.trim()) addAttachedPrompt(sourceId, 'right', quote)
+    },
+    [addAttachedPrompt],
   )
 
   const resizeNode = useCallback(
@@ -457,6 +484,7 @@ function Canvas() {
       removeNode,
       sendPrompt,
       branchPrompt,
+      continuePrompt: addAttachedPrompt,
       resizeNode,
       stopStream,
       newPrompt,
@@ -464,7 +492,7 @@ function Canvas() {
       selectedModel,
       setSelectedModel,
     }),
-    [patchNode, removeNode, sendPrompt, branchPrompt, resizeNode, stopStream, newPrompt, models, selectedModel],
+    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, models, selectedModel],
   )
 
   return (

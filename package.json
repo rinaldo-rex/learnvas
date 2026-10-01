@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "bridge": "node server/index.mjs",
-    "test": "node --test server/*.test.mjs"
+    "test": "node --test server/*.test.mjs src/lib/*.test.mjs"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "^0.99.2",

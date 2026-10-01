@@ -1,5 +1,6 @@
 import { useEffect, useRef, type MouseEvent as RMouseEvent } from 'react'
-import { Handle, Position, type NodeProps } from '@xyflow/react'
+import type { NodeProps } from '@xyflow/react'
+import { NodePorts } from '../components/NodePorts'
 import { useApp } from '../actions'
 import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
@@ -42,8 +43,7 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
 
   return (
     <div className="card prompt">
-      <Handle type="target" position={Position.Left} id="t" className="h-hidden" />
-      <Handle type="source" position={Position.Right} id="s" className="h-hidden" />
+      <NodePorts id={id} />
 
       <div
         className="card-head"

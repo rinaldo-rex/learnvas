@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { PromptData, ResponseData } from './types'
 import type { ModelInfo } from './lib/api'
+import type { ContinuationPort } from './lib/ports'
 
 export interface AppActions {
   // kind is omitted from patches — the discriminant must never be patched.
@@ -12,6 +13,8 @@ export interface AppActions {
   /** Create a focused draft prompt connected to the selected source card.
    *  The excerpt is quoted; a response starts only when the draft is sent. */
   branchPrompt(sourceId: string, quote: string): void
+  /** Continue this conversation with an unquoted draft on the chosen side. */
+  continuePrompt(sourceId: string, port: ContinuationPort): void
   /** Persist a user resize of a response card (updates node style + data). */
   resizeNode(id: string, width: number, height: number): void
   stopStream(responseId: string): void

@@ -4,7 +4,8 @@ import {
   type MouseEvent as RMouseEvent,
   type PointerEvent as RPointerEvent,
 } from 'react'
-import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react'
+import { useReactFlow, type NodeProps } from '@xyflow/react'
+import { NodePorts } from '../components/NodePorts'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
@@ -113,8 +114,7 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
       ref={cardRef}
       className={`card response ${data.height ? 'tall' : ''}`}
     >
-      <Handle type="target" position={Position.Left} id="t" className="h-hidden" />
-      <Handle type="source" position={Position.Right} id="s" className="h-hidden" />
+      <NodePorts id={id} />
 
       <div
         className="card-head"

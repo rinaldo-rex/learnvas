@@ -30,6 +30,7 @@ body {
 }
 
 .card {
+  position: relative;
   background: #fff;
   border: 1px solid #dcdbd6;
   border-radius: 10px;
@@ -312,9 +313,6 @@ button.ghost:hover {
 
 /* when the user has set an explicit height, the card fills it and the
    body flexes to the available space instead of using max-height */
-.card.response {
-  position: relative;
-}
 .card.response.tall {
   height: 100%;
   display: flex;
@@ -523,6 +521,72 @@ button.ghost:hover {
   background: #fbfaf8;
   color: #3a3a35;
   max-width: 220px;
+}
+
+/* ---------- hover-to-continue buttons ---------- */
+.node-plus {
+  position: absolute;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid #c9c3f0;
+  border-radius: 50%;
+  background: #fff;
+  color: #7d74e0;
+  box-shadow: 0 2px 7px rgba(30, 28, 20, 0.12);
+  font-size: 19px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.card:hover > .node-plus,
+.card:focus-within > .node-plus,
+.react-flow__node:focus-visible .node-plus {
+  opacity: 1;
+  pointer-events: auto;
+}
+.node-plus:hover,
+.node-plus:focus-visible {
+  background: #8f87e8;
+  color: #fff;
+  outline: 2px solid #c9c3f0;
+  outline-offset: 2px;
+}
+.node-plus-top {
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.node-plus-right {
+  top: 50%;
+  right: 0;
+  transform: translate(50%, -50%);
+}
+.node-plus-bottom {
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+}
+.node-plus-left {
+  top: 50%;
+  left: 0;
+  transform: translate(-50%, -50%);
+}
+.node-plus-corner {
+  top: 0;
+  right: 0;
+  transform: translate(50%, -50%);
+}
+@media (hover: none) {
+  .node-plus {
+    opacity: 1;
+    pointer-events: auto;
+  }
 }
 
 /* ---------- handles (wired programmatically, so keep them invisible) ---------- */
