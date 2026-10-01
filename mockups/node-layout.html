@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learnvas — node layout mockup</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: #f0efec; color: #1b1b1f;
+  }
+  header { padding: 20px 28px 4px; }
+  header h1 { font-size: 17px; margin: 0 0 4px; }
+  header p { font-size: 13px; color: #6b675c; margin: 0; }
+  header b { color: #3a3a35; }
+
+  .wrap { display: flex; gap: 22px; flex-wrap: wrap; padding: 18px 28px 40px; align-items: flex-start; }
+  .panel { flex: 1 1 660px; max-width: 760px; }
+  .panel > h2 { font-size: 14px; color: #55524a; margin: 4px 2px 10px; }
+  .stage {
+    position: relative; height: 610px; border-radius: 14px;
+    background: #faf9f6;
+    background-image: radial-gradient(#d9d6cf 1px, transparent 1px);
+    background-size: 22px 22px;
+    border: 1px solid #e2e0d9;
+  }
+
+  /* ---------- nodes ---------- */
+  .node { position: absolute; }
+  .card {
+    background: #fff; border: 1px solid #dcdbd6; border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(30,28,20,.06), 0 4px 14px rgba(30,28,20,.05);
+  }
+  .card.you { background: #eef4fb; border-color: #c9d9ef; }
+
+  .card-head {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    font-weight: 600; font-size: 12.5px; cursor: pointer; user-select: none;
+  }
+  .tag {
+    flex-shrink: 0; font-size: 9.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .07em; color: #8a8578; background: #f1efe9;
+    padding: 2px 7px; border-radius: 999px;
+  }
+  .card.you .tag { background: #dde9f7; color: #4a6b96; }
+  .head-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .body {
+    padding: 0 12px 12px; font-size: 12.5px; line-height: 1.58; color: #3a3a35;
+    max-height: 430px; overflow: hidden;
+    transition: max-height .25s ease, padding .25s ease, opacity .2s ease;
+  }
+  .collapsed .body { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; }
+
+  /* two accordions in one node */
+  .duo {
+    display: grid; align-items: stretch;
+    grid-template-columns: 220px 1fr;
+    background: #fff; border: 1px solid #dcdbd6; border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(30,28,20,.06), 0 4px 14px rgba(30,28,20,.05);
+  }
+  .duo .pane { display: flex; flex-direction: column; min-width: 0; }
+  .duo .pane + .pane { border-left: 1px solid #eceae4; }
+  .pane-head {
+    display: flex; align-items: center; gap: 7px; padding: 9px 12px;
+    font-weight: 600; font-size: 12.5px; cursor: pointer; user-select: none;
+    background: #f8f7f3; border-radius: 10px 10px 0 0;
+  }
+  .pane.you .pane-head { background: #eef4fb; }
+  .pane.you .pane-head .tag { background: #dde9f7; color: #4a6b96; }
+  .chev { transition: transform .2s; font-size: 10px; color: #9a9588; }
+  .pane.collapsed .chev { transform: rotate(-90deg); }
+  .pane .body { flex: 1; }
+
+  /* selection + branch */
+  .sel-ok ::selection { background: #ffe58a; }
+  .sel-ok { cursor: text; }
+
+  #branchChip {
+    position: fixed; display: none; z-index: 50;
+    background: #e3b341; color: #3d2e00; font-size: 12px; font-weight: 600;
+    padding: 6px 11px; border-radius: 8px; cursor: pointer;
+    box-shadow: 0 4px 16px rgba(60,45,0,.25); max-width: 300px;
+  }
+  #branchChip.show { display: block; }
+  #branchChip span { opacity: .75; font-weight: 500; }
+
+  .quote {
+    border-left: 3px solid #e3b341; background: #fdf6e3;
+    padding: 6px 9px; border-radius: 0 6px 6px 0; font-style: italic;
+    color: #6b5d33; margin-bottom: 8px; font-size: 11.5px; line-height: 1.5;
+  }
+
+  .hidden { display: none; }
+  .pop { animation: pop .28s ease-out; }
+  @keyframes pop { from { transform: scale(.96); opacity: .35; } to { transform: scale(1); opacity: 1; } }
+
+  /* wires */
+  svg.wires { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .wire { fill: none; stroke: #b9b4a8; stroke-width: 2; }
+
+  .notes { margin: 12px 4px 0; padding: 0; list-style: none; font-size: 12.5px; color: #6b675c; }
+  .notes li { margin: 3px 0; }
+  .notes .plus { color: #3d7a46; font-weight: 700; }
+  .notes .minus { color: #a1512d; font-weight: 700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Learnvas · node layout mockup</h1>
+  <p>Same conversation, shown two ways. <b>Try it:</b> select a phrase inside any <i>response</i> → click the yellow
+     <b>Branch</b> chip. Click any header to collapse/expand that side.</p>
+</header>
+
+<div class="wrap">
+  <!-- ============ OPTION A ============ -->
+  <section class="panel">
+    <h2>Option A — two separate cards per turn</h2>
+    <div class="stage" id="panelA">
+      <svg class="wires">
+        <defs>
+          <marker id="arrowA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#b9b4a8"/>
+          </marker>
+        </defs>
+        <path class="wire" data-from="a1" data-to="a2" marker-end="url(#arrowA)"/>
+        <path class="wire" data-from="a2" data-to="a3" marker-end="url(#arrowA)"/>
+        <path class="wire" data-from="a3" data-to="a4" marker-end="url(#arrowA)"/>
+      </svg>
+
+      <div class="node card you" id="a1" style="left:36px; top:20px; width:250px;">
+        <div class="card-head"><span class="tag">You</span><span class="head-label">Explain how neural networks learn, step by step</span></div>
+      </div>
+
+      <div class="node card" id="a2" style="left:36px; top:118px; width:310px;">
+        <div class="card-head"><span class="tag">Assistant</span><span class="head-label">How neural networks learn</span></div>
+        <div class="body sel-ok">At the heart of how neural networks learn is an optimization loop called <b>gradient descent</b>. The network first makes a prediction from the input, and a loss function measures how far that prediction is from the target. Backpropagation then walks backwards through the layers, computing how much every individual weight contributed to that error. Finally, gradient descent nudges each weight in the direction that reduces the loss, scaled by the <b>learning rate</b> — too large and training diverges, too small and it crawls. Repeating this loop over thousands of examples slowly shapes the network's internal features until its predictions become useful.</div>
+      </div>
+
+      <div class="node card you hidden branch-target" id="a3" style="left:430px; top:235px; width:255px;">
+        <div class="body sel-ok">
+          <div class="quote">"…nudges each weight in the direction that reduces the loss, scaled by the learning rate…"</div>
+          Go deeper on the learning rate — why does it make or break training?
+        </div>
+      </div>
+
+      <div class="node card hidden branch-target" id="a4" style="left:430px; top:382px; width:265px;">
+        <div class="card-head"><span class="tag">Assistant</span><span class="head-label">The learning rate</span></div>
+        <div class="body sel-ok">Gradient descent is best pictured as a hiker descending a foggy valley: the loss surface is the terrain, the current weights are your position, and the gradient is the direction of steepest ascent — so you step the opposite way. The learning rate is your step size: a good one lands you in the lowest valley, a bad one sends you bouncing between hillsides or freezing in place.</div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="plus">+</span> Prompt and response move / collapse independently; easy to re-draft just the prompt and re-run it.</li>
+      <li><span class="minus">−</span> ~2× the nodes and edges — the tree gets visually busy fast as branches fan out.</li>
+    </ul>
+  </section>
+
+  <!-- ============ OPTION B ============ -->
+  <section class="panel">
+    <h2>Option B — one card, prompt &amp; response as side-by-side accordions</h2>
+    <div class="stage" id="panelB">
+      <svg class="wires">
+        <defs>
+          <marker id="arrowB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#b9b4a8"/>
+          </marker>
+        </defs>
+        <path class="wire" data-from="b1" data-to="b2" marker-end="url(#arrowB)"/>
+      </svg>
+
+      <div class="node duo sel-ok" id="b1" style="left:36px; top:40px; width:620px; min-height:120px;">
+        <div class="pane you">
+          <div class="pane-head"><span class="chev">▾</span><span class="tag">You</span><span class="head-label">Neural nets, step by step</span></div>
+          <div class="body sel-ok">Explain how neural networks learn, step by step. Assume I know basic algebra but no calculus.</div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span class="chev">▾</span><span class="tag">Assistant</span><span class="head-label">How neural networks learn</span></div>
+          <div class="body sel-ok">At the heart of how neural networks learn is an optimization loop called <b>gradient descent</b>. The network first makes a prediction from the input, and a loss function measures how far that prediction is from the target. Backpropagation then walks backwards through the layers, computing how much every individual weight contributed to that error. Finally, gradient descent nudges each weight in the direction that reduces the loss, scaled by the <b>learning rate</b> — too large and training diverges, too small and it crawls. Repeating this loop over thousands of examples slowly shapes the network's internal features until its predictions become useful.</div>
+        </div>
+      </div>
+
+      <div class="node duo sel-ok hidden branch-target" id="b2" style="left:80px; top:404px; width:560px; grid-template-columns:250px 1fr;">
+        <div class="pane you">
+          <div class="pane-head"><span class="chev">▾</span><span class="tag">You</span><span class="head-label">Follow-up · learning rate</span></div>
+          <div class="body sel-ok">
+            <div class="quote">"…nudges each weight in the direction that reduces the loss, scaled by the learning rate…"</div>
+            Go deeper on the learning rate — why does it make or break training?
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span class="chev">▾</span><span class="tag">Assistant</span><span class="head-label">The learning rate</span></div>
+          <div class="body sel-ok">Gradient descent is best pictured as a hiker descending a foggy valley: the loss surface is the terrain, the current weights are your position, and the gradient is the direction of steepest ascent — so you step the opposite way. The learning rate is your step size: a good one lands you in the lowest valley, a bad one sends you bouncing between hillsides or freezing in place.</div>
+        </div>
+      </div>
+    </div>
+    <ul class="notes">
+      <li><span class="plus">+</span> One object per turn — compact tree, fewer edges, branch fan-out stays readable.</li>
+      <li><span class="plus">+</span> Either side collapses independently (collapse the prompt after sending; keep reading the answer).</li>
+      <li><span class="minus">−</span> Cards are wide; prompt and response share one box so they can't be spread apart.</li>
+    </ul>
+  </section>
+</div>
+
+<div id="branchChip"></div>
+
+<script>
+  /* ---------- accordion ---------- */
+  document.querySelectorAll('.card-head, .pane-head').forEach(h => {
+    h.addEventListener('click', () => {
+      h.closest('.card, .pane').classList.toggle('collapsed');
+      requestAnimationFrame(drawEdges);
+    });
+  });
+
+  /* ---------- edges ---------- */
+  function drawEdges() {
+    document.querySelectorAll('svg.wires').forEach(svg => {
+      const stage = svg.closest('.stage');
+      const sr = stage.getBoundingClientRect();
+      svg.querySelectorAll('path[data-from]').forEach(p => {
+        const from = stage.querySelector('#' + p.dataset.from);
+        const to = stage.querySelector('#' + p.dataset.to);
+        if (!from || !to || from.classList.contains('hidden') || to.classList.contains('hidden')) {
+          p.style.display = 'none'; return;
+        }
+        p.style.display = '';
+        const fr = from.getBoundingClientRect(), tr = to.getBoundingClientRect();
+        const f = { r: fr.right - sr.left, cx: (fr.left + fr.right) / 2 - sr.left, b: fr.bottom - sr.top, cy: (fr.top + fr.bottom) / 2 - sr.top };
+        const t = { l: tr.left - sr.left, cx: (tr.left + tr.right) / 2 - sr.left, t: tr.top - sr.top, cy: (tr.top + tr.bottom) / 2 - sr.top };
+        let d;
+        if (t.l - f.r > 40) { // horizontal: right edge -> left edge
+          const mx = (f.r + t.l) / 2;
+          d = `M ${f.r} ${f.cy} C ${mx} ${f.cy}, ${mx} ${t.cy}, ${t.l} ${t.cy}`;
+        } else {             // vertical: bottom edge -> top edge
+          const my = (f.b + t.t) / 2;
+          d = `M ${f.cx} ${f.b} C ${f.cx} ${my}, ${t.cx} ${my}, ${t.cx} ${t.t}`;
+        }
+        p.setAttribute('d', d);
+      });
+    });
+  }
+  window.addEventListener('resize', drawEdges);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawEdges);
+  drawEdges();
+
+  /* ---------- selection -> branch chip ---------- */
+  const chip = document.getElementById('branchChip');
+  const trim = (s, n) => { s = s.replace(/\s+/g, ' ').trim(); return s.length > n ? s.slice(0, n) + '…' : s; };
+
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { chip.classList.remove('show'); return; }
+    const range = sel.getRangeAt(0);
+    const host = (range.commonAncestorContainer.parentElement || range.commonAncestorContainer).closest('.sel-ok');
+    if (!host) { chip.classList.remove('show'); return; }
+    const stage = host.closest('.stage');
+    if (!stage) { chip.classList.remove('show'); return; }
+    const rect = range.getBoundingClientRect();
+    chip.dataset.stage = stage.id;
+    chip.style.left = Math.min(rect.right + 4, window.innerWidth - 310) + 'px';
+    chip.style.top = (rect.bottom + 6) + 'px';
+    chip.innerHTML = '↳ Branch from “<span>' + trim(sel.toString(), 26) + '</span>”';
+    chip.classList.add('show');
+  });
+
+  chip.addEventListener('mousedown', e => {
+    e.preventDefault();
+    const stage = document.getElementById(chip.dataset.stage);
+    if (stage) {
+      const target = stage.querySelector('.branch-target');
+      if (target) {
+        target.classList.remove('hidden');
+        requestAnimationFrame(() => { target.classList.add('pop'); drawEdges(); });
+      }
+    }
+    chip.classList.remove('show');
+    window.getSelection().removeAllRanges();
+  });
+</script>
+</body>
+</html>

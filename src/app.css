@@ -1,0 +1,298 @@
+:root {
+  font-size: 13px;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: #1b1b1f;
+}
+.canvas-wrap {
+  width: 100%;
+  height: 100%;
+}
+
+/* ---------- node shells ---------- */
+.react-flow__node-prompt {
+  width: 280px;
+  font-size: 13px;
+}
+.react-flow__node-response {
+  width: 340px;
+  font-size: 13px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #dcdbd6;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(30, 28, 20, 0.06),
+    0 4px 14px rgba(30, 28, 20, 0.05);
+}
+.react-flow__node.selected .card {
+  border-color: #8f87e8;
+  box-shadow:
+    0 0 0 2px rgba(143, 135, 232, 0.25),
+    0 4px 14px rgba(30, 28, 20, 0.05);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+.tag {
+  flex-shrink: 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #f1efe9;
+  color: #8a8578;
+}
+.tag.you {
+  background: #dde9f7;
+  color: #4a6b96;
+}
+.tag.asst {
+  background: #efe9f7;
+  color: #6b5ca8;
+}
+.head-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: 12.5px;
+  color: #3a3a35;
+}
+.model {
+  font-size: 10.5px;
+  color: #8a8578;
+  background: #f6f5f1;
+  border: 1px solid #e8e6df;
+  padding: 1px 7px;
+  border-radius: 999px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 130px;
+}
+.spacer {
+  flex: 1;
+}
+.chev {
+  font-size: 10px;
+  color: #9a9588;
+  transition: transform 0.15s;
+}
+.chev.rot {
+  transform: rotate(-90deg);
+}
+.x {
+  border: none;
+  background: transparent;
+  color: #b6b1a4;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 2px;
+  border-radius: 5px;
+}
+.x:hover {
+  color: #a1512d;
+  background: #f7ece7;
+}
+
+.quote {
+  border-left: 3px solid #e3b341;
+  background: #fdf6e3;
+  padding: 6px 9px;
+  border-radius: 0 6px 6px 0;
+  font-style: italic;
+  color: #6b5d33;
+  font-size: 11.5px;
+  line-height: 1.5;
+  margin: 0 12px 8px;
+  max-height: 88px;
+  overflow-y: auto;
+}
+
+.prompt-input {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 0 12px 4px;
+  border: 1px solid #e4e2da;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #3a3a35;
+  background: #fbfaf8;
+  resize: none;
+  field-sizing: content;
+  min-height: 64px;
+  max-height: 240px;
+}
+.prompt-input:focus {
+  outline: none;
+  border-color: #b9b1ea;
+  background: #fff;
+}
+
+.card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 10px;
+}
+button.primary {
+  border: 1px solid #c9c3f0;
+  background: #8f87e8;
+  color: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+button.primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+button.primary:not(:disabled):hover {
+  background: #7d74e0;
+}
+button.ghost {
+  border: 1px solid #dcdbd6;
+  background: #fff;
+  color: #6b675c;
+  font-size: 11.5px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+button.ghost:hover {
+  background: #f6f5f1;
+}
+.hint {
+  font-size: 10px;
+  color: #b6b1a4;
+}
+
+/* ---------- response body ---------- */
+.resp {
+  padding: 2px 12px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #3a3a35;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+  cursor: text;
+}
+.resp ::selection {
+  background: #ffe58a;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.status-dot.streaming {
+  background: #e3b341;
+  animation: pulse 1s infinite;
+}
+.status-dot.done {
+  background: #9dc79a;
+}
+.status-dot.error {
+  background: #d97757;
+}
+.status-dot.stopped {
+  background: #b6b1a4;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: #8f87e8;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: pulse 1s infinite;
+}
+
+.branch-chip {
+  position: fixed;
+  z-index: 1000;
+  background: #e3b341;
+  color: #3d2e00;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(60, 45, 0, 0.25);
+  max-width: 300px;
+}
+.branch-chip span {
+  opacity: 0.75;
+  font-weight: 500;
+}
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #dcdbd6;
+  border-radius: 10px;
+  padding: 8px 10px;
+  box-shadow: 0 4px 14px rgba(30, 28, 20, 0.06);
+}
+.toolbar select {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border-radius: 7px;
+  border: 1px solid #dcdbd6;
+  background: #fbfaf8;
+  color: #3a3a35;
+  max-width: 220px;
+}
+
+/* ---------- handles (wired programmatically, so keep them invisible) ---------- */
+.h-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.react-flow__attribution {
+  background: transparent;
+  font-size: 9px;
+}
