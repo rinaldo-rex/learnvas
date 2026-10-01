@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { useApp } from '../actions'
+import { modelLabel } from '../lib/api'
 import type { ResponseNode } from '../types'
 
 const trim = (s: string, n = 26) => {
@@ -9,7 +10,7 @@ const trim = (s: string, n = 26) => {
 }
 
 export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
-  const { patchNode, removeNode, branchFrom, stopStream } = useApp()
+  const { patchNode, removeNode, branchFrom, stopStream, models } = useApp()
   const [chip, setChip] = useState<{ x: number; y: number; text: string } | null>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
 
@@ -58,7 +59,7 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
       >
         <span className={`status-dot ${data.status}`} />
         <span className="tag asst">Assistant</span>
-        <span className="model">{data.model}</span>
+        <span className="model">{modelLabel(data.model, models)}</span>
         <span className="spacer" />
         {streaming && (
           <button

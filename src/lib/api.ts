@@ -13,6 +13,13 @@ export async function fetchModels(): Promise<ModelInfo[]> {
   return json.models ?? []
 }
 
+/** Human label for a stored model id: "Gemini 3.6 Flash (google)". Falls back to the raw id. */
+export function modelLabel(model: string, models: ModelInfo[]): string {
+  if (!model || model === 'pi default') return 'pi default'
+  const m = models.find((x) => x.id === model)
+  return m ? `${m.name} (${m.provider})` : model
+}
+
 export interface StreamHandlers {
   onDelta(text: string): void
   onDone(): void

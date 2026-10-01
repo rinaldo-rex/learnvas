@@ -395,7 +395,7 @@ function Canvas() {
                 <option value="">pi default</option>
                 {models.map((m) => (
                   <option key={m.id} value={m.id}>
-                    {m.name}
+                    {m.name} ({m.provider})
                   </option>
                 ))}
               </select>
