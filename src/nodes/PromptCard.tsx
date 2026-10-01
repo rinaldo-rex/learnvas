@@ -73,13 +73,13 @@ export function PromptCard({ id, data }: NodeProps<PromptNode>) {
       {!collapsed && (
         <>
           {data.quote && (
-            <div ref={quoteRef} className={`quote nodrag ${quoteScrolls ? 'nowheel' : ''}`}>
+            <div ref={quoteRef} className={`quote nodrag nopan ${quoteScrolls ? 'nowheel' : ''}`}>
               “{data.quote}”
             </div>
           )}
           <textarea
             ref={ref}
-            className={`prompt-input nodrag ${inputScrolls ? 'nowheel' : ''}`}
+            className={`prompt-input nodrag nopan ${inputScrolls ? 'nowheel' : ''}`}
             value={data.text}
             placeholder="What do you want to understand?"
             onChange={(e) => updatePrompt(id, { text: e.target.value })}

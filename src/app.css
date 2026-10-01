@@ -206,6 +206,16 @@ button.ghost:hover {
   overflow-y: auto;
   cursor: text;
 }
+
+/* React Flow sets user-select:none on all nodes — re-enable it wherever
+   text is meant to be read and selected. */
+.resp,
+.prompt-input,
+.quote,
+.branch-composer textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
 .resp ::selection {
   background: #ffe58a;
 }

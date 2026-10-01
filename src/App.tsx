@@ -158,7 +158,20 @@ function Canvas() {
   const patchNode = useCallback(
     (id: string, patch: Partial<(PromptNode | ResponseNode)['data']>) => {
       setNodes((ns) =>
-        ns.map((n) => (n.id === id ? ({ ...n, data: { ...n.data, ...patch } } as LVNode) : n)),
+        ns.map((n) => {
+          if (n.id !== id) return n
+          const next = { ...n, data: { ...n.data, ...patch } } as LVNode
+          // A resized response keeps an explicit wrapper height; drop it while
+          // collapsed so the card actually shrinks to its header, restore on
+          // expand. (User-resized width stays.)
+          if (next.type === 'response' && patch.collapsed !== undefined) {
+            next.style = {
+              ...next.style,
+              height: patch.collapsed ? undefined : (next.data as ResponseData).height,
+            }
+          }
+          return next
+        }),
       )
     },
     [setNodes],
