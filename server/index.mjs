@@ -1,11 +1,12 @@
 // Learnvas bridge — a tiny local server between the browser canvas and pi.
 //
-//   GET  /api/models  -> models pi has credentials for (the /model list)
+//   GET  /api/models     -> models pi has credentials for (the /model list)
+//   GET  /api/extensions -> read-only loader inventory and tutor configuration
 //   POST /api/chat    -> SSE stream of text deltas for one tutoring exchange
 //
 // Each chat request creates a fresh in-memory pi AgentSession with:
 //   - a tutor system prompt (no coding-agent prompt, no AGENTS.md leakage)
-//   - no tools (pure text chat)
+//   - only allowlisted web tools, when web access is enabled
 //   - the caller's requested model (or pi's default)
 import http from 'node:http'
 import {
@@ -15,6 +16,7 @@ import {
   DefaultResourceLoader,
   getAgentDir,
 } from '@earendil-works/pi-coding-agent'
+import { emptyExtensionReport, extensionLoadReport } from './extensions.mjs'
 
 const PORT = Number(process.env.BRIDGE_PORT || 5178)
 
@@ -30,6 +32,12 @@ You also have web access (web_search, fetch_content, and friends). Use it when t
 // Escape hatch: LEARNVAS_WEB_ACCESS=0 disables web tools for chat sessions.
 const WEB_ACCESS = process.env.LEARNVAS_WEB_ACCESS !== '0'
 const WEB_TOOLS = ['web_search', 'source_check', 'fetch_content', 'get_search_content']
+const WEB_EXTENSION = 'npm:pi-web-access'
+
+// Snapshots of existing loads, not a second discovery pass. Reading the
+// inventory never executes additional extension code or changes settings.
+let startupExtensions = emptyExtensionReport()
+let tutorExtensions = null
 
 const modelRuntime = await ModelRuntime.create()
 
@@ -53,22 +61,33 @@ async function makeSession(modelRef, { loadExtensions = false, webAccess = false
     noExtensions: !loadExtensions,
     // Web sessions load ONLY the pi-web-access extension — its tools come
     // with it; no other user extension, skill, or context file is touched.
-    ...(webAccess ? { additionalExtensionPaths: ['npm:pi-web-access'] } : {}),
+    ...(webAccess ? { additionalExtensionPaths: [WEB_EXTENSION] } : {}),
     noSkills: true,
     noPromptTemplates: true,
     noThemes: true,
   })
-  await loader.reload()
-  const { session } = await createAgentSession({
-    resourceLoader: loader,
-    sessionManager: SessionManager.inMemory(),
-    // Web sessions activate just the pi-web-access tools; everything else
-    // (file tools, bash, …) stays off. Otherwise: fully toolless.
-    ...(webAccess ? { tools: WEB_TOOLS } : { noTools: true }),
-    modelRuntime,
-    ...(modelRef ? { model: modelRuntime.getModel(modelRef.provider, modelRef.id) } : {}),
-  })
-  return session
+  const recordExtensions = (error = null) => {
+    const report = extensionLoadReport(loader.getExtensions(), error)
+    if (loadExtensions) startupExtensions = report
+    else if (webAccess) tutorExtensions = report
+  }
+  try {
+    await loader.reload()
+    recordExtensions()
+    const { session } = await createAgentSession({
+      resourceLoader: loader,
+      sessionManager: SessionManager.inMemory(),
+      // Web sessions activate just the pi-web-access tools; everything else
+      // (file tools, bash, …) stays off. Otherwise: fully toolless.
+      ...(webAccess ? { tools: WEB_TOOLS } : { noTools: true }),
+      modelRuntime,
+      ...(modelRef ? { model: modelRuntime.getModel(modelRef.provider, modelRef.id) } : {}),
+    })
+    return session
+  } catch (e) {
+    recordExtensions(String(e?.message ?? e))
+    throw e
+  }
 }
 
 function json(res, code, obj) {
@@ -111,6 +130,21 @@ const server = http.createServer((req, res) => {
         })
       })
       .catch((e) => json(res, 200, { models: [], error: String(e?.message ?? e) }))
+    return
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/extensions') {
+    void warmupPromise.then(() => {
+      json(res, 200, {
+        startup: startupExtensions,
+        tutor: {
+          enabled: WEB_ACCESS,
+          source: WEB_EXTENSION,
+          tools: WEB_ACCESS ? WEB_TOOLS : [],
+          lastLoad: tutorExtensions,
+        },
+      })
+    }).catch((e) => json(res, 500, { error: String(e?.message ?? e) }))
     return
   }
 

@@ -402,7 +402,107 @@ button.ghost:hover {
   margin: 2px 0 8px;
 }
 
-/* ---------- toolbar ---------- */
+/* ---------- toolbar and read-only extension inventory ---------- */
+.canvas-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: calc(100vw - 32px);
+}
+.extensions-panel {
+  width: min(540px, calc(100vw - 32px));
+  background: #fff;
+  border: 1px solid #dcdbd6;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(30, 28, 20, 0.05);
+  font-size: 12px;
+}
+.extensions-panel > summary {
+  cursor: pointer;
+  padding: 9px 12px;
+  font-weight: 600;
+}
+.extensions-panel > summary .hint {
+  margin-left: 10px;
+  color: #8a8578;
+}
+.extensions-body {
+  max-height: min(520px, 60vh);
+  overflow-y: auto;
+  padding: 0 12px 12px;
+  line-height: 1.5;
+  user-select: text;
+}
+.extensions-body h3 {
+  font-size: 12px;
+  margin: 14px 0 6px;
+}
+.extensions-note {
+  font-size: 11px;
+  color: #6b675c;
+  margin: 6px 0 9px;
+}
+.extension-entry {
+  border-top: 1px solid #eeece6;
+  padding: 7px 0;
+}
+.extension-entry > summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.extension-entry .hint {
+  margin-left: 8px;
+  color: #8a8578;
+}
+.extension-meta {
+  font-size: 11px;
+  color: #6b675c;
+  margin: 5px 0 0 12px;
+  overflow-wrap: anywhere;
+}
+.extension-meta code,
+.extension-error code,
+.extension-warning code {
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+.tutor-extension {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.extension-status {
+  font-size: 10px;
+  background: #f1efe9;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #6b675c;
+}
+.extension-error,
+.extension-warning {
+  font-size: 11px;
+  padding: 6px 8px;
+  margin: 6px 0;
+  border-radius: 6px;
+  overflow-wrap: anywhere;
+}
+.extension-error {
+  background: #f7ece7;
+  color: #a1512d;
+}
+.extension-warning {
+  background: #fdf6e3;
+  color: #6b5d33;
+}
+.extension-error code,
+.extension-warning code {
+  display: block;
+}
+.extensions-body > button {
+  margin-top: 8px;
+}
 .toolbar {
   display: flex;
   gap: 8px;

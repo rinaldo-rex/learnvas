@@ -14,6 +14,7 @@ import {
   type XYPosition,
 } from '@xyflow/react'
 import { AppCtx, type AppActions } from './actions'
+import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
 import { PromptCard } from './nodes/PromptCard'
 import { ResponseCard } from './nodes/ResponseCard'
@@ -484,7 +485,7 @@ function Canvas() {
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} color="#d9d6cf" />
           <Controls showInteractive={false} />
           <MiniMap pannable zoomable bgColor="#f4f3ef" maskColor="rgba(240,239,236,.85)" nodeColor="#cfcabe" />
-          <Panel position="top-left">
+          <Panel position="top-left" className="canvas-controls">
             <div className="toolbar">
               <button className="primary" onClick={newPrompt}>
                 ＋ New prompt
@@ -535,6 +536,7 @@ function Canvas() {
                 Clear
               </button>
             </div>
+            <ExtensionsPanel />
           </Panel>
         </ReactFlow>
       </div>

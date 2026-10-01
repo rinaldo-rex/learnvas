@@ -20,6 +20,40 @@ export function modelLabel(model: string, models: ModelInfo[]): string {
   return m ? `${m.name} (${m.provider})` : model
 }
 
+export interface ExtensionInfo {
+  name: string
+  path: string
+  source: string
+  scope: string
+  tools: string[]
+  commands: string[]
+  events: string[]
+}
+
+export interface ExtensionLoadReport {
+  extensions: ExtensionInfo[]
+  errors: { path: string; error: string }[]
+  warnings: { path: string; warning: string }[]
+  error: string | null
+}
+
+export interface ExtensionInventory {
+  startup: ExtensionLoadReport
+  tutor: {
+    enabled: boolean
+    source: string
+    tools: string[]
+    /** Null until a web-enabled tutor session has actually been created. */
+    lastLoad: ExtensionLoadReport | null
+  }
+}
+
+export async function fetchExtensions(signal?: AbortSignal): Promise<ExtensionInventory> {
+  const res = await fetch('/api/extensions', { signal })
+  if (!res.ok) throw new Error(`Extension inventory unavailable (HTTP ${res.status})`)
+  return res.json() as Promise<ExtensionInventory>
+}
+
 export interface StreamHandlers {
   onDelta(text: string): void
   onDone(): void
