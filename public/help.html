@@ -162,7 +162,7 @@
       </tbody>
     </table>
     <p class="note">Single-key shortcuts (<kbd>X</kbd>, <kbd>?</kbd>, <kbd>Z</kbd>) do not run while typing or while a modal is open. Holding a key does not repeat an action.</p>
-    <p class="note">Only deletion is undoable. Up to 50 deletions are remembered until a reload or <strong>Clear</strong>; there is no redo yet. Restored streaming answers are stopped, not restarted. While editing, <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Z</kbd> is left to the input’s native text editing rather than canvas history.</p>
+    <p class="note">Only deletion is undoable. Up to 50 deletions are remembered until a thread switch, reload, or <strong>Clear</strong>; there is no redo yet. Restored streaming answers are stopped, not restarted. While editing, <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Z</kbd> is left to the input’s native text editing rather than canvas history.</p>
     <p class="note">Answers support Markdown headings, lists, links, code blocks, and tables.</p>
   </section>
 
@@ -178,10 +178,10 @@
   <details id="privacy">
     <summary>Saving, privacy, and safety</summary>
     <ul>
-      <li>Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport are saved as a portable document in browser-local storage under <code>learnvas:document</code>. Theme preference uses <code>learnvas:theme</code>. Old MVP storage is not migrated.</li>
-      <li>Invalid or unsupported saved documents show an error and disable autosave to avoid overwriting them. <strong>Clear</strong> asks permission to discard that document. Saves are debounced by 400 ms; closing or reloading before then may lose recent changes.</li>
-      <li>Storage belongs to the browser profile and origin. A different hostname, port, or profile may show a different canvas. Clearing site data removes it; storage can also be blocked or full.</li>
-      <li>There is no export/import, account sync, or collaboration yet. Browser-local storage is not a backup.</li>
+      <li>Open <strong>Threads</strong> to create, switch, rename, trash, or restore a named canvas. Tab and Enter navigate threads; Esc closes the panel. The panel fits narrow screens and hides in zen mode.</li>
+      <li>Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport autosave as <code>.learn</code> files under <code>~/.learnvas/</code>. Browser storage remembers only the last thread and theme. Old browser canvases are not automatically migrated.</li>
+      <li>Switching stops generation, flushes partial answers, saves the outgoing canvas, and resets undo history. Errors/conflicts keep it available: retry saving or enter a new title and save a recovery copy. Invalid library files are preserved with warnings.</li>
+      <li>Saves are debounced by 400 ms; closing or reloading before saving finishes may lose recent changes. Back up library files separately. There is no export/import, account sync, or collaboration yet.</li>
       <li>Reloading does not resume generation. Partial saved answers are marked stopped.</li>
       <li>Prompts and branch history go to the chosen model provider. Web queries and URLs may go to external services. Verify important claims and sources.</li>
     </ul>
@@ -204,7 +204,7 @@ just learn</code></pre>
       <thead><tr><th scope="col">Setting</th><th scope="col">Purpose</th></tr></thead>
       <tbody>
         <tr><td><code>BRIDGE_PORT</code></td><td>Default: 5178. If changed, update the API proxy in <code>vite.config.ts</code>. Launcher cleanup still targets 5178 unless changed.</td></tr>
-        <tr><td><code>LEARNVAS_LIBRARY_DIR</code></td><td>Default: <code>~/.learnvas/</code>. File-library API location; browser autosave is still separate.</td></tr>
+        <tr><td><code>LEARNVAS_LIBRARY_DIR</code></td><td>Default: <code>~/.learnvas/</code>. File-library location for browser thread autosave.</td></tr>
         <tr><td><code>LEARNVAS_TRUSTED_ORIGINS</code></td><td>Add exact HTTP(S) loopback origins for other local app ports. Vite defaults to strict port 5173.</td></tr>
         <tr><td><code>PI_CODING_AGENT_DIR</code></td><td>Use another Pi agent directory for configuration, credentials, and resources.</td></tr>
         <tr><td><code>LEARNVAS_WEB_ACCESS</code></td><td>Set to 0 to disable tutor tools, not the startup extension warmup.</td></tr>
@@ -221,7 +221,7 @@ just learn</code></pre>
         <tr><td>Quota or provider error</td><td>Check account permission, supported models, and credits. Listing a model does not validate a request.</td></tr>
         <tr><td>Web requests fail</td><td>Check the web extension and inventory, or restart with web access disabled to isolate the issue.</td></tr>
         <tr><td>API errors / stale backend</td><td>Ensure the bridge is running on the port configured in Vite. Starting Vite alone does not start the bridge.</td></tr>
-        <tr><td>Canvas seems empty</td><td>Check the browser profile and Vite URL. Storage is separate for each hostname and port.</td></tr>
+        <tr><td>Canvas seems empty</td><td>Open Threads and check the library path and any warnings. Old browser canvases are not automatically migrated.</td></tr>
         <tr><td>Still in light mode</td><td>System follows your OS. Choose Theme: Dark to override it.</td></tr>
       </tbody>
     </table>

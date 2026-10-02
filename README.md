@@ -4,7 +4,7 @@
 
 Questions and answers live as separate cards. Select a passage to ask about it, click **+** to continue a thread, or compare responses from different models without losing your original conversation.
 
-Learnvas runs in your browser with a local [Pi SDK](https://github.com/earendil-works/pi) bridge. It saves your canvas in browser-local storage and supports System / Light / Dark themes. The bridge also provides a durable [`.learn` file-library API](docs/thread-library.md); browser integration is not implemented yet.
+Learnvas runs in your browser with a local [Pi SDK](https://github.com/earendil-works/pi) bridge. Named learning threads autosave to `~/.learnvas/` through the local [`.learn` file library](docs/thread-library.md). Open **Threads** to create, switch, rename, trash, or restore a complete canvas. System / Light / Dark themes are supported.
 
 ## Quick start
 

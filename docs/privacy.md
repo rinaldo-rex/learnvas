@@ -4,17 +4,15 @@
 
 ## What is saved
 
-Canvas data is stored in browser `localStorage` under `learnvas:document`, using the [portable `.learn` v1 format](learn-format.md); theme preference uses `learnvas:theme`. The document saves a stable thread ID, title, timestamps, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport. Browser-local storage is **not a backup**.
+Named canvases autosave as [portable `.learn` v1 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport.
 
-The old MVP `learnvas:v1` storage is ignored, with no migration. New canvases have an internal “Untitled” title until named-thread UI is implemented. Invalid or unsupported saved documents produce a visible error and disable autosave so they are not silently overwritten; **Clear** explicitly discards the unreadable document after confirmation.
+Browser `localStorage` holds only convenience preferences: `learnvas:last-thread` and `learnvas:theme`. Clearing site data does not delete library files. Old `learnvas:document` and `learnvas:v1` canvases are ignored, without automatic migration or deletion. Invalid/unsupported library files are preserved and reported as warnings, never rewritten silently.
 
-Storage belongs to the browser profile and origin. Changing the hostname or port, using another profile, or clearing site data can make the canvas unavailable. Saving may fail if browser storage is blocked or full.
+There is currently no canvas export/import UI, account sync, or collaboration. Reloading does not resume generation; saved partial answers are marked stopped. Text/layout is portable, but continuing generation requires configured model credentials. Runtime objects, credentials/configuration fields, extension state, and undo stacks are not stored in the document. Text itself is not redacted.
 
-The bridge provides a durable [filesystem library API](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The browser is not connected to it yet, and there is no automatic migration. There is currently no canvas export/import UI, account sync, or collaboration. Reloading does not resume generation; saved partial answers are marked stopped. Text/layout is portable, but continuing generation requires configured model credentials. Runtime objects, credentials/configuration fields, extension state, and undo stacks are not stored in the document. Text itself is not redacted.
+Saves use a 400 ms debounce. Reloading or closing before it finishes may lose the latest changes. Storage failures/conflicts are shown in the toolbar and thread panel; the canvas remains editable in memory. Switching refuses to abandon unsaved work. Retry explicitly, or save a separately named recovery copy. Stop the bridge before manually editing library files.
 
-Saves use a 400 ms debounce. Reloading or closing before it finishes may lose the latest changes. Storage failures are shown in the toolbar; the canvas remains editable in memory.
-
-Pi sessions are in-memory and are not saved as Pi session files by Learnvas. Browser storage and API-managed `.learn` files are conversation records, not executable Pi sessions. Treat both as potentially sensitive; file-library documents retain conversation text verbatim.
+Pi sessions are in-memory and are not saved as Pi session files by Learnvas. `.learn` files are conversation records, not executable Pi sessions. Treat both as potentially sensitive; file-library documents retain conversation text verbatim.
 
 ## What leaves your machine
 

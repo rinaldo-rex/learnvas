@@ -14,7 +14,7 @@ Run these from the project directory:
 | `just learn` | Start the bridge and browser app together. |
 | `pnpm bridge` | Start only the Pi bridge. |
 | `pnpm dev` | Start only Vite. |
-| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, deletion history, extension inventory, ports, and themes. |
+| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, thread switching/save failures/conflicts/stream ownership, deletion history, extension inventory, ports, and themes. |
 | `pnpm build` / `just build` | Type-check TypeScript and build the frontend into `dist/`. |
 | `pnpm preview` | Preview the built frontend; this is not a complete application launcher and does not start the bridge. |
 
@@ -25,7 +25,7 @@ flowchart TD
   A[React canvas] -->|same-origin /api| B[Vite proxy]
   B --> C[Node HTTP bridge]
   C --> D[Fresh Pi tutor session]
-  C -->|Library API clients| F[Managed .learn files]
+  C -->|Canvas autosave| F[Managed .learn files]
   D --> E[Selected model provider]
   C -->|SSE text and tool events| A
 ```
@@ -61,7 +61,7 @@ Paths below are relative to the project root.
 
 The bridge exposes `GET /api/models`, `GET /api/extensions`, `POST /api/chat`, and the [thread-library endpoints](thread-library.md#http-endpoints). Chat streams contain `delta`, `tool`, `done`, and `error` events. All routes enforce trusted local request headers. Library operations do not require model credentials or wait for Pi warmup.
 
-The bridge imports the canonical TypeScript validator using Node's built-in type stripping (Node 22.19+); no separate schema copy, database, or backend dependency is introduced. API tests use temporary directories and ephemeral loopback ports, never `~/.learnvas/`. The browser still uses its existing localStorage adapter.
+The bridge imports the canonical TypeScript validator using Node's built-in type stripping (Node 22.19+); no separate schema copy, database, or backend dependency is introduced. API tests use temporary directories and ephemeral loopback ports, never `~/.learnvas/`. The browser uses `threadApi.ts` and the serial mutation controller `threadWorkspace.ts`. `ThreadPanel.tsx` provides the collapsible sidebar; `streamOwner.ts` invalidates late generation callbacks when stopped/unmounted. Canvas bindings capture synchronous refs, including flushed stream buffers, before switching. A keyed provider remount resets graph and deletion history; saved viewports are applied on initialization. Legacy `canvasStorage.ts` remains only as a tested adapter, not active persistence.
 
 ## Contribution checks
 

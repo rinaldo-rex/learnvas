@@ -2,7 +2,9 @@
 
 [← Learnvas](../README.md)
 
-Start with the empty prompt card, choose a provider and model in the toolbar, and ask something you want to understand.
+Open **Threads**, enter a title, and click **New thread**. Start with its empty prompt card, choose a provider and model in the toolbar, and ask something you want to understand.
+
+The collapsible thread panel lists saved canvases and supports rename, recoverable trash, and restore. Tab to a thread and press Enter to switch; the current thread is labeled active. Esc closes the panel and returns focus. Switching stops streaming, saves partial answers as stopped, and resets deletion-undo history. Save failures/conflicts keep your current canvas open: use **Retry save**, or enter a new title and **Save recovery copy**. No newer revision is silently overwritten.
 
 ## Explore a conversation
 
@@ -42,15 +44,15 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Reset the canvas | Click **Clear** and confirm. This removes the current canvas, not your theme preference or Pi credentials. |
 | Change appearance | Choose **Theme: System**, **Light**, or **Dark**. System mode reacts to OS appearance changes. |
 | Open help | Press **?** (**Shift+/** on a US keyboard) or click **?** at the top-right. Close the overlay with **Esc**, **Close ×**, or a click outside it. |
-| Toggle zen mode | Press **Z** to hide or restore the toolbar, extensions panel, help button, zoom controls, and minimap. Cards and their controls stay visible. |
+| Toggle zen mode | Press **Z** to hide or restore the thread controls, toolbar, extensions panel, help button, zoom controls, and minimap. Cards and their controls stay visible. |
 | Command palette | Press **Ctrl+K** / **Cmd+K**. The palette is empty for now; **Esc** closes it. |
 
 The single-key shortcuts (**X**, **?**, **Z**) do not run while typing in an input or while a modal is open. Holding a key down does not repeat an action.
 
-While editing, **Ctrl+Z** / **Cmd+Z** is left to the input's native text editing rather than canvas history. Canvas deletion history retains up to 50 deletions until a reload or **Clear**; there is no redo yet. Restored streaming answers are marked stopped, not restarted.
+While editing, **Ctrl+Z** / **Cmd+Z** is left to the input's native text editing rather than canvas history. Canvas deletion history retains up to 50 deletions until a thread switch, reload, or **Clear**; there is no redo yet. Restored streaming answers are marked stopped, not restarted.
 
 Answers stream as Markdown, including headings, links, code blocks, lists, and tables. With web access enabled, the tutor can look up current information and supply sources.
 
-Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport are saved in browser-local storage using the [`.learn` document format](learn-format.md). Reloading restores the saved view and never resumes generation. See [Data and privacy](privacy.md) before treating that storage as a durable record.
+Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport autosave to the active file in `~/.learnvas/` using the [`.learn` document format](learn-format.md). The toolbar shows unsaved/saving/saved/error/conflict status. Browser test canvases are not migrated. Reloading restores the saved view and never resumes generation. See [Data and privacy](privacy.md) before treating that storage as a durable record.
 
 Related: [Models and configuration](configuration.md) · [Troubleshooting](troubleshooting.md).

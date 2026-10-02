@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { defaultKeybindingsHandlerIgnore, tinykeys } from 'tinykeys'
 import {
   Background,
   BackgroundVariant,
+  applyNodeChanges,
+  applyEdgeChanges,
   Controls,
   MiniMap,
   Panel,
   ReactFlow,
   ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
   useReactFlow,
   type Edge,
   type XYPosition,
@@ -20,8 +20,11 @@ import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { HelpButton, HelpDialog } from './components/HelpButton'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
 import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
-import { loadCanvas, saveCanvas, type StoredCanvas } from './lib/canvasStorage'
-import { canvasToDocument, createThreadMetadata, documentToCanvas, type ThreadMetadata } from './lib/learnDocument'
+import { canvasToDocument, documentToCanvas } from './lib/learnDocument'
+import { threadApi, type ThreadRecord } from './lib/threadApi'
+import { LAST_THREAD_KEY, ThreadWorkspace } from './lib/threadWorkspace'
+import { StreamOwner } from './lib/streamOwner'
+import { ThreadPanel } from './components/ThreadPanel'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { parseThemePreference } from './lib/theme'
 import { useTheme } from './lib/useTheme'
@@ -31,38 +34,48 @@ import type { ChatMsg, LVNode, PromptNode, ResponseData, ResponseNode } from './
 
 const nodeTypes = { prompt: PromptCard, response: ResponseCard }
 
-function loadSaved(): StoredCanvas {
-  try {
-    return loadCanvas(localStorage)
-  } catch (error) {
-    // Even accessing localStorage can throw when browser storage is blocked.
-    return { kind: 'error', message: error instanceof Error ? error.message : 'Could not access canvas storage' }
-  }
-}
-
 export default function App() {
-  return (
-    <ReactFlowProvider>
-      <Canvas />
+  const [workspace] = useState(() => new ThreadWorkspace(threadApi, id => {
+    if (id) localStorage.setItem(LAST_THREAD_KEY, id)
+    else localStorage.removeItem(LAST_THREAD_KEY)
+  }, filename => confirm(`Filename already exists. Save as ${filename}?`)))
+  const state = useSyncExternalStore(workspace.subscribe, workspace.getSnapshot)
+  const [threadsOpen, setThreadsOpen] = useState(false)
+  const threadFocus = useRef<HTMLElement | null>(null)
+  const openThreads = useCallback(() => {
+    threadFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setThreadsOpen(true)
+  }, [])
+  const closeThreads = useCallback(() => {
+    setThreadsOpen(false)
+    requestAnimationFrame(() => threadFocus.current?.focus({ preventScroll: true }))
+  }, [])
+  useEffect(() => {
+    let last: string | null = null
+    try { last = localStorage.getItem(LAST_THREAD_KEY) } catch { /* optional convenience */ }
+    void workspace.start(last)
+  }, [workspace])
+  return <>
+    {state.active ? <ReactFlowProvider key={state.active.document.threadId}>
+      <Canvas record={state.active} workspace={workspace} openThreads={openThreads} />
       <CommandPalette />
-    </ReactFlowProvider>
-  )
+    </ReactFlowProvider> : <div className="library-welcome">
+      <h1>Learnvas</h1><p>{state.error ?? 'Create or open a learning thread to begin.'}</p>
+      <button className="primary" onClick={openThreads}>Threads</button>
+    </div>}
+    {threadsOpen && <ThreadPanel workspace={workspace} onClose={closeThreads} />}
+  </>
 }
 
-function Canvas() {
+function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; workspace: ThreadWorkspace; openThreads(): void }) {
   const { preference, theme, setPreference } = useTheme()
-  const [stored] = useState(loadSaved)
-  const saved = useMemo(() => stored.kind === 'loaded' ? documentToCanvas(stored.document) : null, [stored])
-  const [metadata, setMetadata] = useState<ThreadMetadata>(() => {
-    if (stored.kind !== 'loaded') return createThreadMetadata()
-    const { threadId, title, createdAt, updatedAt } = stored.document
-    return { threadId, title, createdAt, updatedAt }
-  })
-  const [viewport, setViewport] = useState(saved?.viewport ?? { x: 0, y: 0, zoom: 1 })
-  const [autosaveBlocked, setAutosaveBlocked] = useState(stored.kind === 'error')
-  const [persistenceError, setPersistenceError] = useState(stored.kind === 'error' ? stored.message : null)
-  const [nodes, setNodes, onNodesChange] = useNodesState<LVNode>(saved?.nodes ?? [])
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(saved?.edges ?? [])
+  const [saved] = useState(() => documentToCanvas(record.document))
+  const metadataRef = useRef(record.document)
+  metadataRef.current = record.document
+  const persistence = useSyncExternalStore(workspace.subscribe, workspace.getSnapshot)
+  const [viewport, setViewport] = useState(saved.viewport)
+  const [nodes, rawSetNodes] = useState<LVNode[]>(saved.nodes)
+  const [edges, rawSetEdges] = useState<Edge[]>(saved.edges)
   const [models, setModels] = useState<ModelInfo[]>([])
   const [selectedModel, setSelectedModel] = useState('') // '' = pi default
   const [zen, setZen] = useState(false)
@@ -71,6 +84,7 @@ function Canvas() {
   const deletionHistory = useRef<CanvasGraph[]>([])
   const helpFocusRef = useRef<HTMLElement | null>(null)
   const { screenToFlowPosition, getZoom, getViewport, setCenter } = useReactFlow()
+  const alive = useRef(true)
 
   const openHelp = useCallback(() => {
     helpFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -82,12 +96,29 @@ function Canvas() {
   }, [])
 
   const nodesRef = useRef(nodes)
-  nodesRef.current = nodes
   const edgesRef = useRef(edges)
-  edgesRef.current = edges
+  // Synchronous refs make buffered stream flushes visible to an immediate save.
+  const setNodes = useCallback((update: LVNode[] | ((nodes: LVNode[]) => LVNode[])) => {
+    if (!alive.current) return
+    nodesRef.current = typeof update === 'function' ? update(nodesRef.current) : update
+    rawSetNodes(nodesRef.current)
+  }, [])
+  const setEdges = useCallback((update: Edge[] | ((edges: Edge[]) => Edge[])) => {
+    if (!alive.current) return
+    edgesRef.current = typeof update === 'function' ? update(edgesRef.current) : update
+    rawSetEdges(edgesRef.current)
+  }, [])
   const selectedModelRef = useRef(selectedModel)
   selectedModelRef.current = selectedModel
-  const aborts = useRef(new Map<string, AbortController>())
+  const aborts = useRef(new Map<string, { stop(): void; cancel(): void }>())
+  useEffect(() => {
+    alive.current = true
+    return () => {
+      alive.current = false
+      for (const job of aborts.current.values()) job.cancel()
+      aborts.current.clear()
+    }
+  }, [])
 
   /* ---------- provider → model selection ---------- */
   const providers = useMemo(() => {
@@ -117,23 +148,12 @@ function Canvas() {
     [models],
   )
 
-  /* ---------- persistence (debounced) ---------- */
-  useEffect(() => {
-    if (autosaveBlocked) return
-    const t = setTimeout(() => {
-      try {
-        const updatedAt = new Date(Math.max(Date.now(), Date.parse(metadata.updatedAt))).toISOString()
-        saveCanvas(localStorage, canvasToDocument(
-          { nodes, edges, viewport: getViewport() },
-          { ...metadata, updatedAt },
-        ))
-        setPersistenceError(null)
-      } catch (error) {
-        setPersistenceError(error instanceof Error ? error.message : 'Could not save canvas')
-      }
-    }, 400)
-    return () => clearTimeout(t)
-  }, [nodes, edges, viewport, metadata, autosaveBlocked, getViewport])
+  /* ---------- file-backed persistence ---------- */
+  useEffect(() => workspace.bind(record.document.threadId, {
+    snapshot: () => canvasToDocument({ nodes: nodesRef.current, edges: edgesRef.current, viewport: getViewport() }, metadataRef.current),
+    stop: () => { for (const job of [...aborts.current.values()]) job.stop() },
+  }), [workspace, record.document.threadId, getViewport])
+  useEffect(() => { workspace.changed() }, [workspace, nodes, edges, viewport])
 
   /* ---------- model list ---------- */
   useEffect(() => {
@@ -148,28 +168,6 @@ function Canvas() {
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [])
-
-  /* ---------- starter card on a fresh canvas ---------- */
-  useEffect(() => {
-    if (stored.kind !== 'empty') return
-    const t = setTimeout(() => {
-      setNodes((ns) =>
-        ns.length
-          ? ns
-          : [
-              {
-                id: crypto.randomUUID(),
-                type: 'prompt',
-                dragHandle: '.card-head',
-                position: { x: -140, y: 0 },
-                data: { kind: 'prompt', text: '', sent: false, collapsed: false, focus: true },
-              } satisfies PromptNode,
-            ],
-      )
-    }, 0)
-    return () => clearTimeout(t)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   /* ---------- node helpers ---------- */
@@ -204,12 +202,10 @@ function Canvas() {
       const doomedEdges = new Set(deleted.edges.map((edge) => edge.id))
       if (hoveredNodeRef.current && doomed.has(hoveredNodeRef.current)) hoveredNodeRef.current = null
       for (const d of doomed) {
-        aborts.current.get(d)?.abort()
+        aborts.current.get(d)?.cancel()
         aborts.current.delete(d)
       }
       // Keep refs current for consecutive delete/undo events before React renders.
-      nodesRef.current = nodesRef.current.filter((node) => !doomed.has(node.id))
-      edgesRef.current = edgesRef.current.filter((edge) => !doomedEdges.has(edge.id))
       setNodes((ns) => ns.filter((n) => !doomed.has(n.id)))
       setEdges((es) => es.filter((e) => !doomedEdges.has(e.id)))
     },
@@ -366,13 +362,13 @@ function Canvas() {
       ])
 
       const ac = new AbortController()
-      aborts.current.set(respId, ac)
-
+      const owner = new StreamOwner(() => alive.current)
+      const ownsCanvas = () => owner.accepts()
       let pending = ''
       let raf = 0
       const flush = () => {
         raf = 0
-        if (!pending) return
+        if (!ownsCanvas() || !pending) return
         const chunk = pending
         pending = ''
         setNodes((ns) =>
@@ -384,9 +380,11 @@ function Canvas() {
         )
       }
       const finish = (status: 'done' | 'error' | 'stopped', message?: string) => {
+        if (!ownsCanvas()) return
         if (raf) cancelAnimationFrame(raf)
         raf = 0
         flush()
+        owner.invalidate()
         aborts.current.delete(respId)
         setNodes((ns) =>
           ns.map((n) =>
@@ -409,15 +407,21 @@ function Canvas() {
         setEdges((es) => es.map((e) => (e.target === respId ? { ...e, animated: false } : e)))
       }
 
+      aborts.current.set(respId, {
+        stop: () => { finish('stopped'); ac.abort() },
+        cancel: () => { owner.invalidate(); if (raf) cancelAnimationFrame(raf); ac.abort() },
+      })
       streamChat({
         model,
         messages,
         signal: ac.signal,
         onDelta(t) {
+          if (!ownsCanvas()) return
           pending += t
           if (!raf) raf = requestAnimationFrame(flush)
         },
         onTool(name, phase) {
+          if (!ownsCanvas()) return
           patchNode(respId, { activity: phase === 'start' ? `🔎 ${name}…` : undefined })
         },
         onDone() {
@@ -428,7 +432,7 @@ function Canvas() {
         },
       })
     },
-    [setEdges, setNodes],
+    [setEdges, setNodes, patchNode],
   )
 
   const sendPrompt = useCallback(
@@ -517,16 +521,7 @@ function Canvas() {
 
   const stopStream = useCallback(
     (respId: string) => {
-      aborts.current.get(respId)?.abort()
-      aborts.current.delete(respId)
-      setNodes((ns) =>
-        ns.map((n) =>
-          n.id === respId && n.type === 'response'
-            ? { ...n, data: { ...n.data, status: 'stopped', activity: undefined } }
-            : n,
-        ),
-      )
-      setEdges((es) => es.map((e) => (e.target === respId ? { ...e, animated: false } : e)))
+      aborts.current.get(respId)?.stop()
     },
     [setEdges, setNodes],
   )
@@ -558,17 +553,17 @@ function Canvas() {
           edges={edges}
           nodeTypes={nodeTypes}
           colorMode={theme}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
+          onNodesChange={changes => setNodes(ns => applyNodeChanges(changes, ns))}
+          onEdgesChange={changes => setEdges(es => applyEdgeChanges(changes, es))}
           onNodeMouseEnter={(_, node) => { hoveredNodeRef.current = node.id }}
           onNodeMouseLeave={(_, node) => {
             if (hoveredNodeRef.current === node.id) hoveredNodeRef.current = null
           }}
           nodesConnectable={false}
           deleteKeyCode={null}
-          defaultViewport={saved?.viewport}
+          defaultViewport={saved.viewport}
+          onInit={instance => { void instance.setViewport(saved.viewport) }}
           onMoveEnd={(_, nextViewport) => setViewport(nextViewport)}
-          fitView={!saved}
           minZoom={saved ? Math.min(0.2, saved.viewport.zoom) : 0.2}
           maxZoom={saved ? Math.max(2, saved.viewport.zoom) : 2}
         >
@@ -577,6 +572,8 @@ function Canvas() {
           <MiniMap pannable zoomable style={zen ? { display: 'none' } : undefined} />
           <Panel position="top-left" className="canvas-controls" style={zen ? { display: 'none' } : undefined}>
             <div className="toolbar">
+              <button className="ghost" onClick={openThreads} aria-haspopup="dialog">Threads</button>
+              <span role="status" className="thread-save-status">{record.document.title} · {persistence.status}</span>
               <button className="primary" onClick={newPrompt}>
                 ＋ New prompt
               </button>
@@ -621,14 +618,11 @@ function Canvas() {
               <button
                 className="ghost"
                 onClick={() => {
-                  if (confirm(autosaveBlocked ? 'Discard the unreadable saved document and start a new canvas?' : 'Clear the whole canvas?')) {
-                    setMetadata(createThreadMetadata())
-                    setAutosaveBlocked(false)
-                    setPersistenceError(null)
+                  if (confirm('Clear this thread’s canvas?')) {
                     deletionHistory.current = []
                     hoveredNodeRef.current = null
-                    for (const [id, ac] of aborts.current) {
-                      ac.abort()
+                    for (const [id, job] of aborts.current) {
+                      job.cancel()
                       aborts.current.delete(id)
                     }
                     setNodes([])
@@ -640,13 +634,7 @@ function Canvas() {
                 Clear
               </button>
             </div>
-            {persistenceError && (
-              <div role="alert" className="extension-error">
-                {autosaveBlocked
-                  ? `Saved canvas could not be loaded: ${persistenceError}. Autosave is disabled to preserve it. Use Clear to discard it explicitly.`
-                  : `Canvas could not be saved: ${persistenceError}. Your latest changes are not persisted.`}
-              </div>
-            )}
+            {persistence.error && <div role="alert" className="extension-error">{persistence.error}. Latest changes may not be saved. Open Threads to retry or save a recovery copy.</div>}
             <ExtensionsPanel />
           </Panel>
           <Panel position="top-right" style={zen ? { display: 'none' } : undefined}>

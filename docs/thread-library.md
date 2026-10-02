@@ -4,7 +4,11 @@
 
 The bridge manages one self-contained [v1 `.learn` document](learn-format.md) per canvas under **`~/.learnvas/`**. It creates the directory and its **`.trash/`** subdirectory as needed, with private directory/file permissions for newly created entries.
 
-**This release is API-only.** The browser still autosaves to `localStorage`; there is no thread picker, named-thread UI, import/export UI, or automatic migration from browser storage. API clients can reopen library threads after a bridge restart or from another browser profile.
+The browser's **Threads** button opens a collapsible, keyboard-accessible sidebar. Create a named thread, select a saved thread, rename the active thread, move it to Trash, or view Trash and restore it. Every thread owns a complete canvas. Autosave uses these APIs, not browser canvas storage; the browser remembers only the last active ID and theme. Other profiles can reopen the same library.
+
+Switching stops generation, flushes partial text, and saves the outgoing thread before replacing its canvas. Errors/conflicts keep the canvas available; **Retry save** retains the existing revision, while **Save recovery copy** with a new title creates a separate identity without overwriting the original. Never resolve a conflict by blindly refreshing its revision. Undo history resets on switch. Tab/Enter navigate thread buttons; the active button has `aria-current`. Esc closes the panel and returns focus. The panel fits narrow screens and is hidden in zen mode.
+
+Existing `learnvas:document` and older `learnvas:v1` browser canvases are ignored, not automatically migrated or deleted. This rollout intentionally does not carry test canvases into the library. Automatic legacy migration and import/export UI remain separate work.
 
 ## HTTP endpoints
 
@@ -115,4 +119,4 @@ This is browser/network isolation, **not authentication against local processes*
 
 `pnpm test` runs `server/library.test.mjs` against isolated temporary directories and ephemeral loopback servers, never the user's real library. Tests exercise CRUD, confirmation races, strict validation, revisions, malformed files, bounds, permissions, interrupted writes/recovery, symlink/hardlink boundaries, trash/restore, and origin/Host checks.
 
-Out of scope: browser integration/migration, arbitrary external paths, a file watcher, cloud/database storage, permanent-trash purge, and Pi session persistence.
+Out of scope: automatic browser-canvas migration, arbitrary external paths, a file watcher, cloud/database storage, permanent-trash purge, and Pi session persistence.

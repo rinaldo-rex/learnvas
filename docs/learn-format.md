@@ -6,7 +6,7 @@ A learning thread is **one complete canvas**, including any number of root conve
 
 Saved text and layout are portable without Pi or model access. **Continuing generation requires configured model credentials** and an available provider. Opening a document must never start a request, execute extensions, or restore a Pi transcript/session.
 
-The [bridge file-library API](thread-library.md) manages `~/.learnvas/<human-readable-title>.learn`, with confirmed numbered filenames for collisions and recoverable trash. Named-thread UI, browser file-library integration, and export/import UI are not implemented. Filenames and titles are labels, **not identity**. Moving, copying, or renaming the file does not change its internal `threadId`; explicitly creating a new thread gives it a new ID.
+The [bridge file-library API](thread-library.md) manages `~/.learnvas/<human-readable-title>.learn`, with confirmed numbered filenames for collisions and recoverable trash. The browser's **Threads** panel manages named canvases and file-backed autosave. Export/import UI is separate work. Filenames and titles are labels, **not identity**. Moving, copying, or renaming the file does not change its internal `threadId`; explicitly creating a new thread gives it a new ID.
 
 ## Envelope
 
@@ -17,7 +17,7 @@ All fields below are required. A document is identified by its **format marker a
 | `format` | Exactly `"learnvas"`. |
 | `version` | Integer `1`. |
 | `threadId` | Stable, nonempty string. Learnvas generates a UUID for new threads; readers treat IDs as opaque strings. |
-| `title` | Nonempty human-readable title; currently `"Untitled"` for a new browser canvas. |
+| `title` | Nonempty human-readable title; chosen by the user when creating a thread. |
 | `createdAt` | Valid UTC timestamp, exactly `YYYY-MM-DDTHH:mm:ss.sssZ`. Immutable during ordinary saves. |
 | `updatedAt` | Same timestamp syntax, not earlier than `createdAt`; timestamp of the saved snapshot. |
 | `cards` | Ordered array of prompt and response records. Empty is valid. |
@@ -107,7 +107,7 @@ v1 is **strict**: missing required fields, incorrect types, unknown fields at an
 
 Parsing and validation are read-only and return detached canonical objects. Serializing validates **before** JSON encoding so invalid numbers, undefined fields, and unexpected fields cannot quietly disappear. Helpers do not open, rename, truncate, or rewrite files. A caller must successfully validate before replacing current state or saving; rejected documents remain untouched.
 
-If browser loading fails, Learnvas displays the error and disables autosave for that session, preserving the original storage entry. **Clear** explicitly asks permission to discard it and start a new thread. Storage quota/blocking failures are also shown; editing can continue in memory and later changes retry saving.
+Invalid/unsupported library documents are preserved with warnings. Save failures and stale revisions remain visible; switching cannot abandon unsaved work. Users may retry saving or create a separately named recovery copy. **Clear** resets only the active canvas, not its identity.
 
 ## Persisted versus runtime state
 
@@ -125,8 +125,8 @@ If browser loading fails, Learnvas displays the error and disables autosave for 
 - [`empty.learn`](../src/lib/fixtures/empty.learn): a valid canvas with no cards.
 - [`src/lib/learnDocument.test.mjs`](../src/lib/learnDocument.test.mjs): round trips, runtime exclusion, strict validation, read-only file rejection, and browser storage tests. Run `pnpm test` and `pnpm build`.
 
-The browser autosaves after a 400 ms debounce and restores the saved viewport rather than fitting over it. New canvases and **Clear** receive a fresh stable thread ID. The old MVP `learnvas:v1` raw-node storage entry is intentionally ignored, not migrated or deleted. Browser-local storage is still not a backup, and closing/reloading before the debounce completes may lose the latest edits.
+The browser autosaves through the bridge after a 400 ms debounce and restores each thread's saved viewport rather than fitting over it. New threads receive fresh stable IDs; **Clear** retains the active thread identity. Old `learnvas:document` and MVP `learnvas:v1` browser records are ignored, not migrated or deleted. Closing/reloading before saving finishes may lose the latest edits; back up library files separately.
 
 The bridge reuses this validator and serializer directly; its [library API](thread-library.md) adds bounded sizes, filename rules, revision checks, and durable file operations without changing v1.
 
-Out of scope: Pi transcript integration, arbitrary external-file editing, attachments, collaboration, browser file-library integration, and persisted undo history.
+Out of scope: Pi transcript integration, arbitrary external-file editing, attachments, collaboration, automatic legacy migration, and persisted undo history.
