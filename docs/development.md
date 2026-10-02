@@ -14,7 +14,7 @@ Run these from the project directory:
 | `just learn` | Start the bridge and browser app together. |
 | `pnpm bridge` | Start only the Pi bridge. |
 | `pnpm dev` | Start only Vite. |
-| `pnpm test` | Run Node's test runner for extension inventory, connection layout, and theme preference helpers. |
+| `pnpm test` | Run Node's test runner for document serialization/validation/storage, deletion history, extension inventory, ports, and themes. |
 | `pnpm build` / `just build` | Type-check TypeScript and build the frontend into `dist/`. |
 | `pnpm preview` | Preview the built frontend; this is not a complete application launcher and does not start the bridge. |
 
@@ -49,6 +49,8 @@ Paths below are relative to the project root.
 | `src/components/HelpButton.tsx`, `public/help.html` | Modal help overlay and its self-contained HTML guide. |
 | `src/lib/api.ts` | Model/inventory requests and SSE consumption. |
 | `src/lib/ports.ts` | Available sides, branch placement, and response direction. |
+| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v1 schema, validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
+| `src/lib/fixtures/*.learn` | Representative portable canvases used by round-trip tests. |
 | `src/lib/theme.ts`, `src/lib/useTheme.ts`, `src/theme.css` | Theme preference, system appearance, and color tokens. |
 | `server/index.mjs` | Pi session creation, provider warmup, and HTTP endpoints. |
 | `server/extensions.mjs` | Plain-JSON projection of loader metadata, without exposing runtime objects. |

@@ -20,6 +20,8 @@ import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { HelpButton, HelpDialog } from './components/HelpButton'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
 import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
+import { loadCanvas, saveCanvas, type StoredCanvas } from './lib/canvasStorage'
+import { canvasToDocument, createThreadMetadata, documentToCanvas, type ThreadMetadata } from './lib/learnDocument'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { parseThemePreference } from './lib/theme'
 import { useTheme } from './lib/useTheme'
@@ -28,29 +30,13 @@ import { ResponseCard } from './nodes/ResponseCard'
 import type { ChatMsg, LVNode, PromptNode, ResponseData, ResponseNode } from './types'
 
 const nodeTypes = { prompt: PromptCard, response: ResponseCard }
-const STORE_KEY = 'learnvas:v1'
 
-function loadSaved(): { nodes: LVNode[]; edges: Edge[] } | null {
+function loadSaved(): StoredCanvas {
   try {
-    const raw = localStorage.getItem(STORE_KEY)
-    if (!raw) return null
-    const j = JSON.parse(raw) as { nodes?: LVNode[]; edges?: Edge[] }
-    if (!Array.isArray(j.nodes) || !Array.isArray(j.edges)) return null
-    // A reload mid-stream leaves stale status; normalize.
-    for (const n of j.nodes) {
-      if (n.type === 'response') {
-        const d = n.data as ResponseData
-        if (d.status === 'streaming') d.status = 'stopped'
-        d.activity = undefined
-      }
-      if (n.type === 'prompt') n.data.focus = false
-      n.dragHandle = '.card-head'
-      n.selected = false
-    }
-    for (const e of j.edges) e.animated = false
-    return { nodes: j.nodes, edges: j.edges }
-  } catch {
-    return null
+    return loadCanvas(localStorage)
+  } catch (error) {
+    // Even accessing localStorage can throw when browser storage is blocked.
+    return { kind: 'error', message: error instanceof Error ? error.message : 'Could not access canvas storage' }
   }
 }
 
@@ -65,7 +51,16 @@ export default function App() {
 
 function Canvas() {
   const { preference, theme, setPreference } = useTheme()
-  const saved = useMemo(loadSaved, [])
+  const [stored] = useState(loadSaved)
+  const saved = useMemo(() => stored.kind === 'loaded' ? documentToCanvas(stored.document) : null, [stored])
+  const [metadata, setMetadata] = useState<ThreadMetadata>(() => {
+    if (stored.kind !== 'loaded') return createThreadMetadata()
+    const { threadId, title, createdAt, updatedAt } = stored.document
+    return { threadId, title, createdAt, updatedAt }
+  })
+  const [viewport, setViewport] = useState(saved?.viewport ?? { x: 0, y: 0, zoom: 1 })
+  const [autosaveBlocked, setAutosaveBlocked] = useState(stored.kind === 'error')
+  const [persistenceError, setPersistenceError] = useState(stored.kind === 'error' ? stored.message : null)
   const [nodes, setNodes, onNodesChange] = useNodesState<LVNode>(saved?.nodes ?? [])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(saved?.edges ?? [])
   const [models, setModels] = useState<ModelInfo[]>([])
@@ -75,7 +70,7 @@ function Canvas() {
   const hoveredNodeRef = useRef<string | null>(null)
   const deletionHistory = useRef<CanvasGraph[]>([])
   const helpFocusRef = useRef<HTMLElement | null>(null)
-  const { screenToFlowPosition, getZoom, setCenter } = useReactFlow()
+  const { screenToFlowPosition, getZoom, getViewport, setCenter } = useReactFlow()
 
   const openHelp = useCallback(() => {
     helpFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
@@ -124,25 +119,21 @@ function Canvas() {
 
   /* ---------- persistence (debounced) ---------- */
   useEffect(() => {
+    if (autosaveBlocked) return
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(
-          STORE_KEY,
-          JSON.stringify({
-            nodes: nodes.map((n) =>
-              n.type === 'response' && (n.data as ResponseData).status === 'streaming'
-                ? { ...n, data: { ...n.data, status: 'stopped', activity: undefined } }
-                : n,
-            ),
-            edges,
-          }),
-        )
-      } catch {
-        /* storage full / private mode — canvas still works, just not persisted */
+        const updatedAt = new Date(Math.max(Date.now(), Date.parse(metadata.updatedAt))).toISOString()
+        saveCanvas(localStorage, canvasToDocument(
+          { nodes, edges, viewport: getViewport() },
+          { ...metadata, updatedAt },
+        ))
+        setPersistenceError(null)
+      } catch (error) {
+        setPersistenceError(error instanceof Error ? error.message : 'Could not save canvas')
       }
     }, 400)
     return () => clearTimeout(t)
-  }, [nodes, edges])
+  }, [nodes, edges, viewport, metadata, autosaveBlocked, getViewport])
 
   /* ---------- model list ---------- */
   useEffect(() => {
@@ -161,7 +152,7 @@ function Canvas() {
 
   /* ---------- starter card on a fresh canvas ---------- */
   useEffect(() => {
-    if (saved) return
+    if (stored.kind !== 'empty') return
     const t = setTimeout(() => {
       setNodes((ns) =>
         ns.length
@@ -188,13 +179,12 @@ function Canvas() {
         ns.map((n) => {
           if (n.id !== id) return n
           const next = { ...n, data: { ...n.data, ...patch } } as LVNode
-          // A resized response keeps an explicit wrapper height; drop it while
-          // collapsed so the card actually shrinks to its header, restore on
-          // expand. (User-resized width stays.)
-          if (next.type === 'response' && patch.collapsed !== undefined) {
+          // Keep the saved expanded height without forcing a collapsed card
+          // to fill it. User-saved width stays applied in either state.
+          if (patch.collapsed !== undefined) {
             next.style = {
               ...next.style,
-              height: patch.collapsed ? undefined : (next.data as ResponseData).height,
+              height: patch.collapsed ? undefined : next.data.height,
             }
           }
           return next
@@ -576,9 +566,11 @@ function Canvas() {
           }}
           nodesConnectable={false}
           deleteKeyCode={null}
-          fitView
-          minZoom={0.2}
-          maxZoom={2}
+          defaultViewport={saved?.viewport}
+          onMoveEnd={(_, nextViewport) => setViewport(nextViewport)}
+          fitView={!saved}
+          minZoom={saved ? Math.min(0.2, saved.viewport.zoom) : 0.2}
+          maxZoom={saved ? Math.max(2, saved.viewport.zoom) : 2}
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} />
           <Controls showInteractive={false} style={zen ? { display: 'none' } : undefined} />
@@ -629,7 +621,10 @@ function Canvas() {
               <button
                 className="ghost"
                 onClick={() => {
-                  if (confirm('Clear the whole canvas?')) {
+                  if (confirm(autosaveBlocked ? 'Discard the unreadable saved document and start a new canvas?' : 'Clear the whole canvas?')) {
+                    setMetadata(createThreadMetadata())
+                    setAutosaveBlocked(false)
+                    setPersistenceError(null)
                     deletionHistory.current = []
                     hoveredNodeRef.current = null
                     for (const [id, ac] of aborts.current) {
@@ -638,7 +633,6 @@ function Canvas() {
                     }
                     setNodes([])
                     setEdges([])
-                    localStorage.removeItem(STORE_KEY)
                     addPromptNode({ x: -140, y: 0 }, true)
                   }
                 }}
@@ -646,6 +640,13 @@ function Canvas() {
                 Clear
               </button>
             </div>
+            {persistenceError && (
+              <div role="alert" className="extension-error">
+                {autosaveBlocked
+                  ? `Saved canvas could not be loaded: ${persistenceError}. Autosave is disabled to preserve it. Use Clear to discard it explicitly.`
+                  : `Canvas could not be saved: ${persistenceError}. Your latest changes are not persisted.`}
+              </div>
+            )}
             <ExtensionsPanel />
           </Panel>
           <Panel position="top-right" style={zen ? { display: 'none' } : undefined}>

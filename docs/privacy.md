@@ -4,11 +4,15 @@
 
 ## What is saved
 
-Canvas data is stored in browser `localStorage` under `learnvas:v1`; theme preference uses `learnvas:theme`. Cards, connections, and response sizes are saved, but browser-local storage is **not a backup**.
+Canvas data is stored in browser `localStorage` under `learnvas:document`, using the [portable `.learn` v1 format](learn-format.md); theme preference uses `learnvas:theme`. The document saves a stable thread ID, title, timestamps, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport. Browser-local storage is **not a backup**.
+
+The old MVP `learnvas:v1` storage is ignored, with no migration. New canvases have an internal “Untitled” title until named-thread UI is implemented. Invalid or unsupported saved documents produce a visible error and disable autosave so they are not silently overwritten; **Clear** explicitly discards the unreadable document after confirmation.
 
 Storage belongs to the browser profile and origin. Changing the hostname or port, using another profile, or clearing site data can make the canvas unavailable. Saving may fail if browser storage is blocked or full.
 
-There is currently no canvas export/import, account sync, or collaboration. Reloading does not resume generation; saved partial answers are marked stopped.
+There is currently no canvas export/import UI, filesystem library, account sync, or collaboration. Reloading does not resume generation; saved partial answers are marked stopped. Text/layout is portable, but continuing generation requires configured model credentials. Runtime objects, credentials/configuration fields, extension state, and undo stacks are not stored in the document. Text itself is not redacted.
+
+Saves use a 400 ms debounce. Reloading or closing before it finishes may lose the latest changes. Storage failures are shown in the toolbar; the canvas remains editable in memory.
 
 Pi sessions are in-memory and are not saved as Pi session files by Learnvas. The browser canvas is the persisted conversation record.
 

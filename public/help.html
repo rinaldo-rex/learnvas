@@ -178,7 +178,8 @@
   <details id="privacy">
     <summary>Saving, privacy, and safety</summary>
     <ul>
-      <li>Cards, connections, and response sizes are saved in browser-local storage under <code>learnvas:v1</code>. Theme preference uses <code>learnvas:theme</code>.</li>
+      <li>Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport are saved as a portable document in browser-local storage under <code>learnvas:document</code>. Theme preference uses <code>learnvas:theme</code>. Old MVP storage is not migrated.</li>
+      <li>Invalid or unsupported saved documents show an error and disable autosave to avoid overwriting them. <strong>Clear</strong> asks permission to discard that document. Saves are debounced by 400 ms; closing or reloading before then may lose recent changes.</li>
       <li>Storage belongs to the browser profile and origin. A different hostname, port, or profile may show a different canvas. Clearing site data removes it; storage can also be blocked or full.</li>
       <li>There is no export/import, account sync, or collaboration yet. Browser-local storage is not a backup.</li>
       <li>Reloading does not resume generation. Partial saved answers are marked stopped.</li>

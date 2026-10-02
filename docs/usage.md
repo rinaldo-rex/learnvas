@@ -51,6 +51,6 @@ While editing, **Ctrl+Z** / **Cmd+Z** is left to the input's native text editing
 
 Answers stream as Markdown, including headings, links, code blocks, lists, and tables. With web access enabled, the tutor can look up current information and supply sources.
 
-Cards, connections, and response sizes are saved in browser-local storage. See [Data and privacy](privacy.md) before treating that storage as a durable record.
+Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport are saved in browser-local storage using the [`.learn` document format](learn-format.md). Reloading restores the saved view and never resumes generation. See [Data and privacy](privacy.md) before treating that storage as a durable record.
 
 Related: [Models and configuration](configuration.md) · [Troubleshooting](troubleshooting.md).

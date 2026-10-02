@@ -5,6 +5,9 @@ export interface PromptData extends Record<string, unknown> {
   text: string
   sent: boolean
   collapsed: boolean
+  /** Explicit saved dimensions, not React Flow's automatic measurements. */
+  width?: number
+  height?: number
   /** Selected excerpt from the parent card; displayed and included in model context. */
   quote?: string
   /** One-shot signal: autofocus the textarea when the node is created. */
