@@ -38,6 +38,7 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Navigate | Drag empty canvas space to pan; use wheel/trackpad gestures, zoom controls, fit-view, or the minimap. Scrollable card content keeps wheel scrolling inside the card. |
 | Stop an answer | Click **■ stop** while the response is streaming. The partial answer remains. |
 | Delete a branch | Click **×** on a card, or hover over it and press **X**. That card **and all downstream cards** are removed. |
+| Undo deletion | Press **Ctrl+Z** / **Cmd+Z** outside inputs and modals to restore the last deleted branch. Only deletion is undoable; other canvas changes are kept. |
 | Reset the canvas | Click **Clear** and confirm. This removes the current canvas, not your theme preference or Pi credentials. |
 | Change appearance | Choose **Theme: System**, **Light**, or **Dark**. System mode reacts to OS appearance changes. |
 | Open help | Press **?** (**Shift+/** on a US keyboard) or click **?** at the top-right. Close the overlay with **Esc**, **Close ×**, or a click outside it. |
@@ -45,6 +46,8 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Command palette | Press **Ctrl+K** / **Cmd+K**. The palette is empty for now; **Esc** closes it. |
 
 The single-key shortcuts (**X**, **?**, **Z**) do not run while typing in an input or while a modal is open. Holding a key down does not repeat an action.
+
+While editing, **Ctrl+Z** / **Cmd+Z** is left to the input's native text editing rather than canvas history. Canvas deletion history retains up to 50 deletions until a reload or **Clear**; there is no redo yet. Restored streaming answers are marked stopped, not restarted.
 
 Answers stream as Markdown, including headings, links, code blocks, lists, and tables. With web access enabled, the tutor can look up current information and supply sources.
 

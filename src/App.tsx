@@ -19,6 +19,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { HelpButton, HelpDialog } from './components/HelpButton'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
+import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { parseThemePreference } from './lib/theme'
 import { useTheme } from './lib/useTheme'
@@ -72,6 +73,7 @@ function Canvas() {
   const [zen, setZen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const hoveredNodeRef = useRef<string | null>(null)
+  const deletionHistory = useRef<CanvasGraph[]>([])
   const helpFocusRef = useRef<HTMLElement | null>(null)
   const { screenToFlowPosition, getZoom, setCenter } = useReactFlow()
 
@@ -204,28 +206,35 @@ function Canvas() {
 
   const removeNode = useCallback(
     (id: string) => {
-      // Cascade: deleting a node removes everything downstream of it.
-      const doomed = new Set([id])
-      let grew = true
-      while (grew) {
-        grew = false
-        for (const e of edgesRef.current) {
-          if (doomed.has(e.source) && !doomed.has(e.target)) {
-            doomed.add(e.target)
-            grew = true
-          }
-        }
-      }
+      const deleted = captureDeletion({ nodes: nodesRef.current, edges: edgesRef.current }, id)
+      if (!deleted) return
+      deletionHistory.current.push(deleted)
+      if (deletionHistory.current.length > 50) deletionHistory.current.shift()
+      const doomed = new Set(deleted.nodes.map((node) => node.id))
+      const doomedEdges = new Set(deleted.edges.map((edge) => edge.id))
       if (hoveredNodeRef.current && doomed.has(hoveredNodeRef.current)) hoveredNodeRef.current = null
       for (const d of doomed) {
         aborts.current.get(d)?.abort()
         aborts.current.delete(d)
       }
+      // Keep refs current for consecutive delete/undo events before React renders.
+      nodesRef.current = nodesRef.current.filter((node) => !doomed.has(node.id))
+      edgesRef.current = edgesRef.current.filter((edge) => !doomedEdges.has(edge.id))
       setNodes((ns) => ns.filter((n) => !doomed.has(n.id)))
-      setEdges((es) => es.filter((e) => !doomed.has(e.source) && !doomed.has(e.target)))
+      setEdges((es) => es.filter((e) => !doomedEdges.has(e.id)))
     },
     [setNodes, setEdges],
   )
+
+  const undoDeletion = useCallback(() => {
+    const deleted = deletionHistory.current.pop()
+    if (!deleted) return
+    const restored = restoreDeletion({ nodes: nodesRef.current, edges: edgesRef.current }, deleted)
+    nodesRef.current = restored.nodes
+    edgesRef.current = restored.edges
+    setNodes((ns) => restoreDeletion({ nodes: ns, edges: [] }, deleted).nodes)
+    setEdges((es) => restoreDeletion({ nodes: restored.nodes, edges: es }, deleted).edges)
+  }, [setNodes, setEdges])
 
   /* ---------- canvas shortcuts ---------- */
   useEffect(() => {
@@ -244,6 +253,11 @@ function Canvas() {
         event.preventDefault()
         setZen((value) => !value)
       },
+      '$mod+z': (event) => {
+        if (!deletionHistory.current.length) return
+        event.preventDefault()
+        undoDeletion()
+      },
     }, {
       ignore: (event) => defaultKeybindingsHandlerIgnore(event) ||
         (event.target instanceof HTMLElement && event.target.isContentEditable) ||
@@ -255,7 +269,7 @@ function Canvas() {
       unsubscribe()
       window.removeEventListener('blur', clearHover)
     }
-  }, [openHelp, removeNode])
+  }, [openHelp, removeNode, undoDeletion])
 
   const addPromptNode = useCallback(
     (position: XYPosition, focus = false, quote?: string) => {
@@ -616,6 +630,8 @@ function Canvas() {
                 className="ghost"
                 onClick={() => {
                   if (confirm('Clear the whole canvas?')) {
+                    deletionHistory.current = []
+                    hoveredNodeRef.current = null
                     for (const [id, ac] of aborts.current) {
                       ac.abort()
                       aborts.current.delete(id)

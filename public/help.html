@@ -153,6 +153,7 @@
         <tr><td>Compare models</td><td>Select another model, expand a sent prompt, and click <strong>↻ Re-run</strong>. The previous response stays on the canvas.</td></tr>
         <tr><td>Stop generation</td><td>Click <strong>■ stop</strong>. The partial answer remains.</td></tr>
         <tr><td>Delete a branch</td><td>Click <strong>×</strong>, or hover over a card and press <kbd>X</kbd>. This removes the card <strong>and every downstream card</strong>.</td></tr>
+        <tr><td>Undo deletion</td><td>Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Z</kbd> outside inputs and modals to restore the last deleted branch. Other canvas changes are kept.</td></tr>
         <tr><td>Reset the canvas</td><td>Click <strong>Clear</strong> and confirm. Your theme preference and Pi credentials are not cleared.</td></tr>
         <tr><td>Change appearance</td><td>Choose <strong>Theme: System / Light / Dark</strong>. The choice is remembered; System follows OS changes.</td></tr>
         <tr><td>Open help</td><td>Press <kbd>?</kbd> (<kbd>Shift</kbd> + <kbd>/</kbd> on a US keyboard), or click the <strong>?</strong> button. Close with <kbd>Esc</kbd>, <strong>Close ×</strong>, or a click outside the overlay.</td></tr>
@@ -161,6 +162,7 @@
       </tbody>
     </table>
     <p class="note">Single-key shortcuts (<kbd>X</kbd>, <kbd>?</kbd>, <kbd>Z</kbd>) do not run while typing or while a modal is open. Holding a key does not repeat an action.</p>
+    <p class="note">Only deletion is undoable. Up to 50 deletions are remembered until a reload or <strong>Clear</strong>; there is no redo yet. Restored streaming answers are stopped, not restarted. While editing, <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Z</kbd> is left to the input’s native text editing rather than canvas history.</p>
     <p class="note">Answers support Markdown headings, lists, links, code blocks, and tables.</p>
   </section>
 
