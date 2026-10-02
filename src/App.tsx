@@ -14,6 +14,7 @@ import {
   type XYPosition,
 } from '@xyflow/react'
 import { AppCtx, type AppActions } from './actions'
+import { CommandPalette } from './components/CommandPalette'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { HelpButton } from './components/HelpButton'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
@@ -55,6 +56,7 @@ export default function App() {
   return (
     <ReactFlowProvider>
       <Canvas />
+      <CommandPalette />
     </ReactFlowProvider>
   )
 }
