@@ -1,10 +1,14 @@
-import { useCallback, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef } from 'react'
 
-function HelpDialog({ theme, onClose }: { theme: 'light' | 'dark'; onClose(): void }) {
+export function HelpDialog({ theme, onClose }: { theme: 'light' | 'dark'; onClose(): void }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const frameRef = useRef<HTMLIFrameElement>(null)
   // Keep src stable during theme changes so the reader's scroll position stays.
   const initialTheme = useRef(theme)
+  const close = useCallback(() => {
+    dialogRef.current?.close()
+    onClose()
+  }, [onClose])
   const sendTheme = useCallback(() => {
     frameRef.current?.contentWindow?.postMessage(
       { type: 'learnvas-help-theme', theme },
@@ -28,19 +32,22 @@ function HelpDialog({ theme, onClose }: { theme: 'light' | 'dark'; onClose(): vo
         event.origin === window.location.origin &&
         event.data?.type === 'learnvas-help-close'
       ) {
-        dialogRef.current?.close()
+        close()
       }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [])
+  }, [close])
 
   return (
     <dialog
       ref={dialogRef}
       className="help-dialog nodrag nopan nowheel"
       aria-labelledby="help-dialog-title"
-      onClose={onClose}
+      onCancel={(event) => {
+        event.preventDefault()
+        close()
+      }}
       onClick={(event) => {
         // Native dialog backdrop clicks target the dialog, not a child.
         if (event.target !== event.currentTarget) return
@@ -48,13 +55,13 @@ function HelpDialog({ theme, onClose }: { theme: 'light' | 'dark'; onClose(): vo
         if (
           event.clientX < rect.left || event.clientX > rect.right ||
           event.clientY < rect.top || event.clientY > rect.bottom
-        ) event.currentTarget.close()
+        ) close()
       }}
     >
       <header className="help-dialog-head">
         <h2 id="help-dialog-title">Learnvas help</h2>
         <span className="hint">Esc to close</span>
-        <button type="button" className="ghost" onClick={() => dialogRef.current?.close()} aria-label="Close help">
+        <button type="button" className="ghost" onClick={close} aria-label="Close help">
           Close ×
         </button>
       </header>
@@ -69,28 +76,17 @@ function HelpDialog({ theme, onClose }: { theme: 'light' | 'dark'; onClose(): vo
   )
 }
 
-export function HelpButton({ theme }: { theme: 'light' | 'dark' }) {
-  const [open, setOpen] = useState(false)
-  const buttonRef = useRef<HTMLButtonElement>(null)
-  const close = useCallback(() => {
-    setOpen(false)
-    buttonRef.current?.focus({ preventScroll: true })
-  }, [])
-
+export function HelpButton({ onOpen }: { onOpen(): void }) {
   return (
-    <>
-      <button
-        ref={buttonRef}
-        type="button"
-        className="help-button ghost"
-        aria-label="Open help"
-        aria-haspopup="dialog"
-        title="Help"
-        onClick={() => setOpen(true)}
-      >
-        ?
-      </button>
-      {open && <HelpDialog theme={theme} onClose={close} />}
-    </>
+    <button
+      type="button"
+      className="help-button ghost"
+      aria-label="Open help"
+      aria-haspopup="dialog"
+      title="Help (?)"
+      onClick={onOpen}
+    >
+      ?
+    </button>
   )
 }

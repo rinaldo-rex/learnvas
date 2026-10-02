@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { defaultKeybindingsHandlerIgnore, tinykeys } from 'tinykeys'
 import {
   Background,
   BackgroundVariant,
@@ -16,7 +17,7 @@ import {
 import { AppCtx, type AppActions } from './actions'
 import { CommandPalette } from './components/CommandPalette'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
-import { HelpButton } from './components/HelpButton'
+import { HelpButton, HelpDialog } from './components/HelpButton'
 import { fetchModels, streamChat, type ModelInfo } from './lib/api'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { parseThemePreference } from './lib/theme'
@@ -68,7 +69,20 @@ function Canvas() {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(saved?.edges ?? [])
   const [models, setModels] = useState<ModelInfo[]>([])
   const [selectedModel, setSelectedModel] = useState('') // '' = pi default
+  const [zen, setZen] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const hoveredNodeRef = useRef<string | null>(null)
+  const helpFocusRef = useRef<HTMLElement | null>(null)
   const { screenToFlowPosition, getZoom, setCenter } = useReactFlow()
+
+  const openHelp = useCallback(() => {
+    helpFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setHelpOpen(true)
+  }, [])
+  const closeHelp = useCallback(() => {
+    setHelpOpen(false)
+    helpFocusRef.current?.focus({ preventScroll: true })
+  }, [])
 
   const nodesRef = useRef(nodes)
   nodesRef.current = nodes
@@ -202,6 +216,7 @@ function Canvas() {
           }
         }
       }
+      if (hoveredNodeRef.current && doomed.has(hoveredNodeRef.current)) hoveredNodeRef.current = null
       for (const d of doomed) {
         aborts.current.get(d)?.abort()
         aborts.current.delete(d)
@@ -211,6 +226,36 @@ function Canvas() {
     },
     [setNodes, setEdges],
   )
+
+  /* ---------- canvas shortcuts ---------- */
+  useEffect(() => {
+    const unsubscribe = tinykeys(window, {
+      x: (event) => {
+        const id = hoveredNodeRef.current
+        if (!id) return
+        event.preventDefault()
+        removeNode(id)
+      },
+      '[Shift]+?': (event) => {
+        event.preventDefault()
+        openHelp()
+      },
+      z: (event) => {
+        event.preventDefault()
+        setZen((value) => !value)
+      },
+    }, {
+      ignore: (event) => defaultKeybindingsHandlerIgnore(event) ||
+        (event.target instanceof HTMLElement && event.target.isContentEditable) ||
+        document.querySelector('dialog[open]') !== null,
+    })
+    const clearHover = () => { hoveredNodeRef.current = null }
+    window.addEventListener('blur', clearHover)
+    return () => {
+      unsubscribe()
+      window.removeEventListener('blur', clearHover)
+    }
+  }, [openHelp, removeNode])
 
   const addPromptNode = useCallback(
     (position: XYPosition, focus = false, quote?: string) => {
@@ -503,7 +548,7 @@ function Canvas() {
 
   return (
     <AppCtx.Provider value={actions}>
-      <div className="canvas-wrap">
+      <div className="canvas-wrap" onMouseLeave={() => { hoveredNodeRef.current = null }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -511,6 +556,10 @@ function Canvas() {
           colorMode={theme}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeMouseEnter={(_, node) => { hoveredNodeRef.current = node.id }}
+          onNodeMouseLeave={(_, node) => {
+            if (hoveredNodeRef.current === node.id) hoveredNodeRef.current = null
+          }}
           nodesConnectable={false}
           deleteKeyCode={null}
           fitView
@@ -518,9 +567,9 @@ function Canvas() {
           maxZoom={2}
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} />
-          <Controls showInteractive={false} />
-          <MiniMap pannable zoomable />
-          <Panel position="top-left" className="canvas-controls">
+          <Controls showInteractive={false} style={zen ? { display: 'none' } : undefined} />
+          <MiniMap pannable zoomable style={zen ? { display: 'none' } : undefined} />
+          <Panel position="top-left" className="canvas-controls" style={zen ? { display: 'none' } : undefined}>
             <div className="toolbar">
               <button className="primary" onClick={newPrompt}>
                 ＋ New prompt
@@ -583,11 +632,12 @@ function Canvas() {
             </div>
             <ExtensionsPanel />
           </Panel>
-          <Panel position="top-right">
-            <HelpButton theme={theme} />
+          <Panel position="top-right" style={zen ? { display: 'none' } : undefined}>
+            <HelpButton onOpen={openHelp} />
           </Panel>
         </ReactFlow>
       </div>
+      {helpOpen && <HelpDialog theme={theme} onClose={closeHelp} />}
     </AppCtx.Provider>
   )
 }
