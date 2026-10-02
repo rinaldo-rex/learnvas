@@ -4,7 +4,7 @@
 
 Questions and answers live as separate cards. Select a passage to ask about it, click **+** to continue a thread, or compare responses from different models without losing your original conversation.
 
-Learnvas runs in your browser with a local [Pi SDK](https://github.com/earendil-works/pi) bridge. Named learning threads autosave to `~/.learnvas/` through the local [`.learn` file library](docs/thread-library.md). Open **Threads** to create, switch, rename, trash, or restore a complete canvas. System / Light / Dark themes are supported.
+Learnvas runs in your browser with a local [Pi SDK](https://github.com/earendil-works/pi) bridge. Named learning threads autosave to `~/.learnvas/` through the local [`.learn` file library](docs/thread-library.md). Open **Threads** to create, switch, rename, trash, or restore a complete canvas, or import/export portable `.learn` files. System / Light / Dark themes are supported.
 
 ## Quick start
 
@@ -40,7 +40,7 @@ Open the URL printed by Vite, normally **http://localhost:5173**. Type a questio
 | [Models and configuration](docs/configuration.md) | Provider selection, extension inventory, and environment variables. |
 | [Data and privacy](docs/privacy.md) | Local persistence, limitations, tutor isolation, and security precautions. |
 | [Portable `.learn` format](docs/learn-format.md) | v1 document schema, validation, canonical fields, and fixtures. |
-| [Local thread library API](docs/thread-library.md) | File-backed threads, revisions, collision confirmation, trash/restore, and recovery. |
+| [Local thread library API](docs/thread-library.md) | Thread controls, import/export, revisions, collision confirmation, trash/restore, and recovery. |
 | [Development](docs/development.md) | Commands, architecture, source map, and contribution checks. |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and useful details for bug reports. |
 

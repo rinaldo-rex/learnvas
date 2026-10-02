@@ -1,5 +1,6 @@
 import { createThreadMetadata, validateDocument, type LearnDocument } from './learnDocument.ts'
 import { ThreadApiError, type ThreadApi, type ThreadList, type ThreadRecord } from './threadApi.ts'
+import { portableExport, validatePortableDocument } from './portableDocument.ts'
 
 export const LAST_THREAD_KEY = 'learnvas:last-thread'
 export type SaveStatus = 'loading' | 'saved' | 'unsaved' | 'saving' | 'error' | 'conflict'
@@ -58,12 +59,16 @@ export class ThreadWorkspace {
   private failure(error: unknown) {
     this.patch({ status: error instanceof ThreadApiError && error.code === 'revision-conflict' ? 'conflict' : 'error', error: error instanceof Error ? error.message : 'Library operation failed' })
   }
-  private run<T>(operation: () => Promise<T>): Promise<T> {
-    this.cancelTimer()
+  private run<T>(operation: () => Promise<T>, affectsCanvas = true): Promise<T> {
+    if (affectsCanvas) this.cancelTimer()
     const result = this.queue.then(async () => {
       this.patch({ busy: true })
       try { return await operation() }
-      catch (error) { this.failure(error); throw error }
+      catch (error) {
+        if (affectsCanvas) this.failure(error)
+        else this.patch({ error: error instanceof Error ? error.message : 'Library operation failed' })
+        throw error
+      }
       finally { this.patch({ busy: false }) }
     })
     this.queue = result.catch(() => {})
@@ -73,9 +78,9 @@ export class ThreadWorkspace {
     const [threads, trash] = await Promise.all([this.api.list(), this.api.list(true)])
     this.patch({ threads, trash })
   }
-  reload() { return this.run(() => this.refresh()) }
+  reload() { return this.run(() => this.refresh(), false) }
   private async refreshAfterMutation() {
-    try { await this.refresh() } catch (error) { this.failure(error) }
+    try { await this.refresh() } catch (error) { this.patch({ error: error instanceof Error ? error.message : 'Could not refresh library list' }) }
   }
   start(lastId: string | null) {
     // StrictMode can invoke startup twice; never create duplicate threads.
@@ -122,7 +127,7 @@ export class ThreadWorkspace {
     await this.saveOutgoing()
     this.activate(next)
   }) }
-  private async confirmed(operation: (filename?: string) => Promise<ThreadRecord>): Promise<ThreadRecord | null> {
+  private async confirmed(operation: (filename?: string) => Promise<ThreadRecord | null>): Promise<ThreadRecord | null> {
     let filename: string | undefined
     for (;;) {
       try { return await operation(filename) }
@@ -164,6 +169,36 @@ export class ThreadWorkspace {
     const record = await this.confirmed(filename => this.api.restore(id, revision, filename))
     if (record) await this.refreshAfterMutation()
   }) }
+  exportActive() { return this.run(async () => {
+    if (!this.state.active) throw new Error('Select a thread before exporting')
+    await this.saveOutgoing()
+    const active = this.state.active!
+    const saved = await this.api.read(active.document.threadId)
+    if (saved.revision !== active.revision) throw new ThreadApiError('Saved thread changed elsewhere; export cancelled', 'revision-conflict')
+    if (content(this.capture()) !== content(saved.document)) throw new Error('Canvas changed during export; no file was downloaded. Retry exporting')
+    return portableExport(saved.document, saved.filename)
+  }) }
+  /** Import never stops generation, saves, or replaces the active canvas. Open it separately. */
+  importDocument(input: unknown, approve: (kind: 'import' | 'copy', document: LearnDocument) => boolean | Promise<boolean>) {
+    return this.run(async () => {
+      let document = validatePortableDocument(input)
+      if (!await approve('import', document)) return null
+      let copied = false
+      const record = await this.confirmed(async filename => {
+        try { return await this.api.create(document, filename) }
+        catch (error) {
+          if (!(error instanceof ThreadApiError) || error.code !== 'id-conflict' || copied) throw error
+          if (!await approve('copy', document)) return null
+          // Copy-only flow: new identity and timestamps; all exploration content retained.
+          document = { ...document, ...createThreadMetadata(document.title) }
+          copied = true
+          return this.api.create(document, filename)
+        }
+      })
+      if (record) await this.refreshAfterMutation()
+      return record
+    }, false)
+  }
   /** Explicit recovery from save failures: the stored original is never replaced. */
   recoverCopy(title: string) { return this.run(async () => {
     if (!this.state.active) return

@@ -6,6 +6,12 @@ Open **Threads**, enter a title, and click **New thread**. Start with its empty 
 
 The collapsible thread panel lists saved canvases and supports rename, recoverable trash, and restore. Tab to a thread and press Enter to switch; the current thread is labeled active. Esc closes the panel and returns focus. Switching stops streaming, saves partial answers as stopped, and resets deletion-undo history. Save failures/conflicts keep your current canvas open: use **Retry save**, or enter a new title and **Save recovery copy**. No newer revision is silently overwritten.
 
+## Move an exploration between machines or profiles
+
+In **Threads**, use **Save and export active** to save the latest canvas and download a human-readable `.learn` file. Active answers stop and preserve their partial text. Nothing downloads if saving fails or conflicts.
+
+Use **Import .learn** in another library/browser profile, confirm its title, then select it in the saved-thread list. Import does not switch or change your current canvas. Duplicate IDs offer only a separately confirmed copy; filename collisions require approval of a numbered name. Cancel leaves the library unchanged. Files include text, drafts, quotes, branches, layout, sizes, and viewport—but not credentials, runtime activity, or undo. Text is not redacted. See [portable file controls](thread-library.md#portable-import-and-export).
+
 ## Explore a conversation
 
 - **Branch from a passage.** Select text in an answer or prompt input and release the mouse to create a connected prompt with that excerpt quoted.

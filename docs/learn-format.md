@@ -6,7 +6,7 @@ A learning thread is **one complete canvas**, including any number of root conve
 
 Saved text and layout are portable without Pi or model access. **Continuing generation requires configured model credentials** and an available provider. Opening a document must never start a request, execute extensions, or restore a Pi transcript/session.
 
-The [bridge file-library API](thread-library.md) manages `~/.learnvas/<human-readable-title>.learn`, with confirmed numbered filenames for collisions and recoverable trash. The browser's **Threads** panel manages named canvases and file-backed autosave. Export/import UI is separate work. Filenames and titles are labels, **not identity**. Moving, copying, or renaming the file does not change its internal `threadId`; explicitly creating a new thread gives it a new ID.
+The [bridge file-library API](thread-library.md) manages `~/.learnvas/<human-readable-title>.learn`, with confirmed numbered filenames for collisions and recoverable trash. The browser's **Threads** panel manages named canvases and file-backed autosave. Its import/export controls validate bounded UTF-8 documents, create copies only after collision confirmation, and export the current saved state without credentials or runtime objects. Filenames and titles are labels, **not identity**. Moving, copying, or renaming the file does not change its internal `threadId`; explicitly creating a new thread gives it a new ID.
 
 ## Envelope
 
@@ -74,7 +74,7 @@ A collapsed card still saves its expanded height. On load, the UI applies width 
 | `status` | Required `"done"`, `"error"`, or `"stopped"`. No persisted active-request state. |
 | `sourcePromptId` | Required ID of the prompt this response answers; must match the incoming connection's source. |
 
-Runtime `streaming` responses are exported as `stopped`, keeping every text chunk already present in canvas state. Unflushed network/batching buffers are not part of the snapshot. Importing a document with `status: "streaming"` is invalid, rather than implying that a request exists.
+Runtime `streaming` responses are exported as `stopped`, keeping every text chunk already present in canvas state. Unflushed network/batching buffers are not part of the generic projection; the browser's explicit export stops generation and flushes buffered text before saving and downloading. Importing a document with `status: "streaming"` is invalid, rather than implying that a request exists.
 
 ## Connections and graph invariants
 
@@ -120,7 +120,9 @@ Invalid/unsupported library documents are preserved with warnings. Save failures
 ## Helpers, fixtures, and current storage
 
 - [`src/lib/learnDocument.ts`](../src/lib/learnDocument.ts): canonical types; `createThreadMetadata`, `validateDocument`, `parseDocument`, `serializeDocument`, `canvasToDocument`, and `documentToCanvas`.
-- [`src/lib/canvasStorage.ts`](../src/lib/canvasStorage.ts): browser storage adapter, using exactly the same JSON format under `learnvas:document`.
+- [`src/lib/canvasStorage.ts`](../src/lib/canvasStorage.ts): legacy browser storage adapter (not used by current autosave), using exactly the same JSON format under `learnvas:document`.
+- [`src/lib/portableDocument.ts`](../src/lib/portableDocument.ts): bounded UTF-8 uploads, schema/canonical-size validation, and download creation. The 8 MiB constant is shared with the bridge.
+- [`src/lib/portableDocument.test.mjs`](../src/lib/portableDocument.test.mjs): cross-library round trips, duplicate/collision/cancel/error safety, size/version restrictions, current-state export and runtime exclusion.
 - [`branched.learn`](../src/lib/fixtures/branched.learn): multiple roots, prompt/response branches, all port handles, unsent/empty drafts, quotes, different model IDs, partial/error answers, expanded/collapsed sizes, and a translated/zoomed viewport.
 - [`empty.learn`](../src/lib/fixtures/empty.learn): a valid canvas with no cards.
 - [`src/lib/learnDocument.test.mjs`](../src/lib/learnDocument.test.mjs): round trips, runtime exclusion, strict validation, read-only file rejection, and browser storage tests. Run `pnpm test` and `pnpm build`.

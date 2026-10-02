@@ -181,8 +181,10 @@
       <li>Open <strong>Threads</strong> to create, switch, rename, trash, or restore a named canvas. Tab and Enter navigate threads; Esc closes the panel. The panel fits narrow screens and hides in zen mode.</li>
       <li>Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport autosave as <code>.learn</code> files under <code>~/.learnvas/</code>. Browser storage remembers only the last thread and theme. Old browser canvases are not automatically migrated.</li>
       <li>Switching stops generation, flushes partial answers, saves the outgoing canvas, and resets undo history. Errors/conflicts keep it available: retry saving or enter a new title and save a recovery copy. Invalid library files are preserved with warnings.</li>
-      <li>Saves are debounced by 400 ms; closing or reloading before saving finishes may lose recent changes. Back up library files separately. There is no export/import, account sync, or collaboration yet.</li>
-      <li>Reloading does not resume generation. Partial saved answers are marked stopped.</li>
+      <li>Saves are debounced by 400 ms; closing or reloading before saving finishes may lose recent changes. Back up library files separately. There is no account sync or collaboration.</li>
+      <li><strong>Import .learn</strong> validates UTF-8 content, format, version, graph, and an 8 MiB limit. Confirm the title to add it to the library without switching your canvas. Duplicate IDs require approval of a separate copy; filename collisions require confirmation of a numbered name. Cancel adds nothing. Uploaded originals are never changed.</li>
+      <li><strong>Save and export active</strong> stops generation, flushes partial text, saves the latest canvas, and downloads the verified saved document. Saving errors/conflicts produce no download. Files contain the exploration, not credentials, live runtime state, or undo. Text is not redacted—share carefully.</li>
+      <li>Reloading or opening an import does not resume generation. Partial saved answers are marked stopped.</li>
       <li>Prompts and branch history go to the chosen model provider. Web queries and URLs may go to external services. Verify important claims and sources.</li>
     </ul>
     <p>Tutor sessions are fresh and in-memory: no Pi session files, AGENTS.md context, skills, prompt templates, or built-in file/shell tools are loaded into the tutor session.</p>

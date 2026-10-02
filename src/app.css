@@ -749,6 +749,7 @@ button.help-button {
   background: var(--input-bg);
   color: var(--text);
 }
+.thread-panel input[hidden] { display: none; }
 .thread-actions { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
 .thread-list { padding: 0; list-style: none; }
 .thread-list li { margin: 6px 0; overflow-wrap: anywhere; }

@@ -3,9 +3,9 @@ import { constants } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import path from 'node:path'
-import { parseDocument, serializeDocument, validateDocument } from '../src/lib/learnDocument.ts'
+import { MAX_DOCUMENT_BYTES, parseDocument, serializeDocument, validateDocument } from '../src/lib/learnDocument.ts'
 
-export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
+export { MAX_DOCUMENT_BYTES }
 export const DEFAULT_LIBRARY = path.join(homedir(), '.learnvas')
 const nofollow = constants.O_NOFOLLOW ?? 0
 

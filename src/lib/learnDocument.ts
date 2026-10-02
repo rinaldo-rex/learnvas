@@ -3,6 +3,7 @@ import { SOURCE_HANDLES, TARGET_HANDLES } from './ports.ts'
 
 export const LEARN_FORMAT = 'learnvas' as const
 export const LEARN_VERSION = 1 as const
+export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 
 /** Canonical fields only: none of these types depend on React Flow. */
 export interface ThreadMetadata {

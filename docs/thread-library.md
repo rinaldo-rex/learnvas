@@ -8,7 +8,31 @@ The browser's **Threads** button opens a collapsible, keyboard-accessible sideba
 
 Switching stops generation, flushes partial text, and saves the outgoing thread before replacing its canvas. Errors/conflicts keep the canvas available; **Retry save** retains the existing revision, while **Save recovery copy** with a new title creates a separate identity without overwriting the original. Never resolve a conflict by blindly refreshing its revision. Undo history resets on switch. Tab/Enter navigate thread buttons; the active button has `aria-current`. Esc closes the panel and returns focus. The panel fits narrow screens and is hidden in zen mode.
 
-Existing `learnvas:document` and older `learnvas:v1` browser canvases are ignored, not automatically migrated or deleted. This rollout intentionally does not carry test canvases into the library. Automatic legacy migration and import/export UI remain separate work.
+Existing `learnvas:document` and older `learnvas:v1` browser canvases are ignored, not automatically migrated or deleted. This rollout intentionally does not carry test canvases into the library. Automatic legacy migration remains separate work.
+
+## Portable import and export
+
+Open **Threads** for the file controls:
+
+- **Import .learn:** choose a UTF-8 JSON document (maximum 8 MiB). Its format marker, version, full schema, graph, and canonical serialized size are checked before any write. The file extension is only a picker hint. Confirm the displayed title to add it to the managed library; your current canvas, generation, and saved thread stay unchanged. Select the imported thread from the list when ready to open it.
+- **Duplicate ID:** if that identity already exists, including in Trash, explicitly approve importing a separate copy with a fresh ID and timestamps. Replacement is not offered. All cards, connections, transcript text, drafts, quotes, sizes, collapse state, and viewport are retained. Titles can match; any filename collision additionally requires approval of the bridge's numbered proposal. Cancelling any confirmation adds nothing. The original uploaded file is never modified.
+- **Save and export active:** confirm that active generation will stop. Pending stream text is flushed, the latest canvas is saved with its current revision, and the saved file is re-read before download. A failed save, stale revision, or canvas edit during export produces an explicit error and **no download**, rather than silently exporting stale content. The suggested readable filename comes from the managed `.learn` file. Retry or create a recovery copy if saving fails.
+
+An imported partial answer opens as stopped and never creates model requests. Files preserve the exploration, not model credentials, live requests/tool activity, or undo history. Conversation text is not redacted; share files carefully. Continuing generation still requires configured credentials. External paths cannot be opened for direct editing: upload into the library and download a portable copy instead.
+
+```mermaid
+flowchart TD
+  A[Choose file] --> B[Validate content]
+  B --> C[Confirm import]
+  C --> D{Duplicate ID?}
+  D -->|Yes| E[Confirm separate copy]
+  D -->|No| F[Safe create API]
+  E --> F
+  F --> G{Filename collision?}
+  G -->|Yes| H[Confirm numbered name]
+  H --> F
+  G -->|No| I[Added to library]
+```
 
 ## HTTP endpoints
 

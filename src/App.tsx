@@ -48,7 +48,10 @@ export default function App() {
   }, [])
   const closeThreads = useCallback(() => {
     setThreadsOpen(false)
-    requestAnimationFrame(() => threadFocus.current?.focus({ preventScroll: true }))
+    requestAnimationFrame(() => {
+      const target = threadFocus.current?.isConnected ? threadFocus.current : document.querySelector<HTMLElement>('.thread-trigger')
+      target?.focus({ preventScroll: true })
+    })
   }, [])
   useEffect(() => {
     let last: string | null = null
@@ -61,7 +64,7 @@ export default function App() {
       <CommandPalette />
     </ReactFlowProvider> : <div className="library-welcome">
       <h1>Learnvas</h1><p>{state.error ?? 'Create or open a learning thread to begin.'}</p>
-      <button className="primary" onClick={openThreads}>Threads</button>
+      <button className="primary thread-trigger" onClick={openThreads}>Threads</button>
     </div>}
     {threadsOpen && <ThreadPanel workspace={workspace} onClose={closeThreads} />}
   </>
@@ -572,7 +575,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
           <MiniMap pannable zoomable style={zen ? { display: 'none' } : undefined} />
           <Panel position="top-left" className="canvas-controls" style={zen ? { display: 'none' } : undefined}>
             <div className="toolbar">
-              <button className="ghost" onClick={openThreads} aria-haspopup="dialog">Threads</button>
+              <button className="ghost thread-trigger" onClick={openThreads} aria-haspopup="dialog">Threads</button>
               <span role="status" className="thread-save-status">{record.document.title} · {persistence.status}</span>
               <button className="primary" onClick={newPrompt}>
                 ＋ New prompt

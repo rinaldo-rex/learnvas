@@ -14,7 +14,7 @@ Run these from the project directory:
 | `just learn` | Start the bridge and browser app together. |
 | `pnpm bridge` | Start only the Pi bridge. |
 | `pnpm dev` | Start only Vite. |
-| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, thread switching/save failures/conflicts/stream ownership, deletion history, extension inventory, ports, and themes. |
+| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, thread switching/save failures/conflicts/stream ownership, portable import/export/cancellation/size bounds/cross-library round trips, deletion history, extension inventory, ports, and themes. |
 | `pnpm build` / `just build` | Type-check TypeScript and build the frontend into `dist/`. |
 | `pnpm preview` | Preview the built frontend; this is not a complete application launcher and does not start the bridge. |
 
@@ -49,6 +49,9 @@ Paths below are relative to the project root.
 | `src/components/ExtensionsPanel.tsx` | Read-only extension inventory. |
 | `src/components/HelpButton.tsx`, `public/help.html` | Modal help overlay and its self-contained HTML guide. |
 | `src/lib/api.ts` | Model/inventory requests and SSE consumption. |
+| `src/lib/threadApi.ts`, `src/lib/threadWorkspace.ts` | Typed library client, queued mutations, revision-aware switching/autosave, import copy confirmation, and export save/read verification. |
+| `src/lib/portableDocument.ts`, `src/lib/portableDocument.test.mjs` | Bounded portable uploads/downloads and isolated cross-library/error/collision tests. |
+| `src/components/ThreadPanel.tsx` | Accessible collapsible thread management and file controls. |
 | `src/lib/ports.ts` | Available sides, branch placement, and response direction. |
 | `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v1 schema, validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
 | `src/lib/fixtures/*.learn` | Representative portable canvases used by round-trip tests. |
