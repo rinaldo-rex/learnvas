@@ -3,12 +3,15 @@
 //   GET  /api/models     -> models pi has credentials for (the /model list)
 //   GET  /api/extensions -> read-only loader inventory and tutor configuration
 //   POST /api/chat    -> SSE stream of text deltas for one tutoring exchange
+//   /api/threads, /api/trash -> revision-checked managed .learn library
+// All routes require trusted local browser headers; see docs/thread-library.md.
 //
 // Each chat request creates a fresh in-memory pi AgentSession with:
 //   - a tutor system prompt (no coding-agent prompt, no AGENTS.md leakage)
 //   - only allowlisted web tools, when web access is enabled
 //   - the caller's requested model (or pi's default)
-import http from 'node:http'
+import { createBridgeServer, json, readJson, trustedOrigins } from './http.mjs'
+import { ThreadLibrary } from './library.mjs'
 import {
   createAgentSession,
   ModelRuntime,
@@ -19,6 +22,9 @@ import {
 import { emptyExtensionReport, extensionLoadReport } from './extensions.mjs'
 
 const PORT = Number(process.env.BRIDGE_PORT || 5178)
+if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('Invalid BRIDGE_PORT')
+const ORIGINS = trustedOrigins(PORT, process.env.LEARNVAS_TRUSTED_ORIGINS)
+const library = new ThreadLibrary({ directory: process.env.LEARNVAS_LIBRARY_DIR || undefined })
 
 const TUTOR_SYSTEM = `You are the tutor inside Learnvas, a learning canvas where every question and answer lives as a card that the student can branch from.
 Teach clearly: short paragraphs, bold the key terms when you introduce them, use concrete analogies, and define jargon the first time it appears.
@@ -90,11 +96,6 @@ async function makeSession(modelRef, { loadExtensions = false, webAccess = false
   }
 }
 
-function json(res, code, obj) {
-  res.writeHead(code, { 'content-type': 'application/json' })
-  res.end(JSON.stringify(obj))
-}
-
 /** Pull a human-readable line out of provider error payloads. */
 function humanizeError(raw) {
   const s = String(raw ?? '')
@@ -113,9 +114,7 @@ function sse(res, event, data) {
   res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`)
 }
 
-const server = http.createServer((req, res) => {
-  const url = new URL(req.url, `http://localhost:${PORT}`)
-
+async function handleTutorRequest(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/models') {
     void warmupPromise
       .then(() => modelRuntime.getAvailable())
@@ -149,106 +148,97 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.method === 'POST' && url.pathname === '/api/chat') {
-    let body = ''
-    req.on('data', (c) => (body += c))
-    req.on('end', async () => {
-      let payload
-      try {
-        payload = JSON.parse(body)
-      } catch {
-        json(res, 400, { error: 'bad json' })
-        return
-      }
-      const messages = Array.isArray(payload.messages) ? payload.messages : []
-      if (messages.length === 0) {
-        json(res, 400, { error: 'messages required' })
-        return
-      }
+    const payload = await readJson(req)
+    const messages = Array.isArray(payload?.messages) ? payload.messages : []
+    if (messages.length === 0) {
+      json(res, 400, { error: 'messages required' })
+      return
+    }
 
-      // Wait for extension registration before resolving models.
-      await warmupPromise
-      const modelRef = parseModelId(payload.model)
-      if (modelRef && !modelRuntime.getModel(modelRef.provider, modelRef.id)) {
-        json(res, 400, { error: `Unknown model: ${payload.model}` })
-        return
-      }
+    // Wait for extension registration before resolving models.
+    await warmupPromise
+    const modelRef = parseModelId(payload.model)
+    if (modelRef && !modelRuntime.getModel(modelRef.provider, modelRef.id)) {
+      json(res, 400, { error: `Unknown model: ${payload.model}` })
+      return
+    }
 
-      // Fold prior turns into one composed prompt (fresh in-memory session per request).
-      const transcript = messages
-        .slice(0, -1)
-        .map((m) => (m.role === 'user' ? '**Student:** ' : '**Assistant:** ') + m.content)
-        .join('\n\n---\n\n')
-      const question = messages[messages.length - 1]?.content ?? ''
-      const composed = transcript
-        ? `## Conversation so far\n\n${transcript}\n\n## The student now asks\n\n${question}`
-        : question
+    // Fold prior turns into one composed prompt (fresh in-memory session per request).
+    const transcript = messages
+      .slice(0, -1)
+      .map((m) => (m.role === 'user' ? '**Student:** ' : '**Assistant:** ') + m.content)
+      .join('\n\n---\n\n')
+    const question = messages[messages.length - 1]?.content ?? ''
+    const composed = transcript
+      ? `## Conversation so far\n\n${transcript}\n\n## The student now asks\n\n${question}`
+      : question
 
-      let session = null
-      try {
-        session = await makeSession(modelRef, { webAccess: WEB_ACCESS })
-      } catch (e) {
-        json(res, 500, { error: String(e?.message ?? e) })
-        return
-      }
+    let session = null
+    try {
+      session = await makeSession(modelRef, { webAccess: WEB_ACCESS })
+    } catch (e) {
+      json(res, 500, { error: String(e?.message ?? e) })
+      return
+    }
 
-      res.writeHead(200, {
-        'content-type': 'text/event-stream',
-        'cache-control': 'no-cache',
-        connection: 'keep-alive',
-      })
-
-      let closed = false
-      req.on('close', () => {
-        closed = true
-        try {
-          session?.abort()
-        } catch {}
-      })
-
-      try {
-        let errorMessage = null
-        const unsub = session.subscribe((ev) => {
-          if (ev.type === 'message_update' && ev.assistantMessageEvent?.type === 'text_delta' && !closed) {
-            sse(res, 'delta', { text: ev.assistantMessageEvent.delta })
-          } else if (ev.type === 'tool_execution_start' && !closed) {
-            sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'start' })
-          } else if (ev.type === 'tool_execution_end' && !closed) {
-            sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'end' })
-          } else if (
-            ev.type === 'message_end' &&
-            ev.message?.role === 'assistant' &&
-            ev.message.stopReason === 'error'
-          ) {
-            errorMessage = humanizeError(ev.message.errorMessage ?? 'model error')
-          }
-        })
-        await session.prompt(composed)
-        unsub()
-        if (!closed) {
-          if (errorMessage) sse(res, 'error', { message: errorMessage })
-          else sse(res, 'done', {})
-        }
-        res.end()
-      } catch (e) {
-        if (!closed) sse(res, 'error', { message: String(e?.message ?? e) })
-        res.end()
-      } finally {
-        try {
-          session?.dispose()
-        } catch {}
-      }
+    res.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      connection: 'keep-alive',
     })
+
+    let closed = false
+    res.on('close', () => {
+      closed = true
+      try {
+        session?.abort()
+      } catch {}
+    })
+
+    try {
+      let errorMessage = null
+      const unsub = session.subscribe((ev) => {
+        if (ev.type === 'message_update' && ev.assistantMessageEvent?.type === 'text_delta' && !closed) {
+          sse(res, 'delta', { text: ev.assistantMessageEvent.delta })
+        } else if (ev.type === 'tool_execution_start' && !closed) {
+          sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'start' })
+        } else if (ev.type === 'tool_execution_end' && !closed) {
+          sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'end' })
+        } else if (
+          ev.type === 'message_end' &&
+          ev.message?.role === 'assistant' &&
+          ev.message.stopReason === 'error'
+        ) {
+          errorMessage = humanizeError(ev.message.errorMessage ?? 'model error')
+        }
+      })
+      await session.prompt(composed)
+      unsub()
+      if (!closed) {
+        if (errorMessage) sse(res, 'error', { message: errorMessage })
+        else sse(res, 'done', {})
+      }
+      res.end()
+    } catch (e) {
+      if (!closed) sse(res, 'error', { message: String(e?.message ?? e) })
+      res.end()
+    } finally {
+      try {
+        session?.dispose()
+      } catch {}
+    }
     return
   }
 
   json(res, 404, { error: 'not found' })
-})
+}
+const server = createBridgeServer({ library, port: PORT, origins: ORIGINS, fallback: handleTutorRequest })
 
 /**
  * Startup warmup: create and dispose one extension-loading session so that
  * providers/models registered by the user's pi extensions (commandcode,
  * clinepass, …) are registered into the shared ModelRuntime. Registrations
- * survive session disposal. Every API handler awaits this promise, so no
+ * survive session disposal. Tutor/model/inventory handlers await this promise, so no
  * request can observe the pre-registration model list.
  */
 let warmupPromise = Promise.resolve()
@@ -266,7 +256,7 @@ function startWarmup() {
   return warmupPromise
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
   console.log(`[learnvas bridge] listening on http://localhost:${PORT}`)
 })
 startWarmup()

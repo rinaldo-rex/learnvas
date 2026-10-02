@@ -186,7 +186,7 @@
       <li>Prompts and branch history go to the chosen model provider. Web queries and URLs may go to external services. Verify important claims and sources.</li>
     </ul>
     <p>Tutor sessions are fresh and in-memory: no Pi session files, AGENTS.md context, skills, prompt templates, or built-in file/shell tools are loaded into the tutor session.</p>
-    <p><strong>This is not a security sandbox.</strong> Extensions execute local code with the bridge’s permissions. The bridge has no authentication and is not explicitly bound only to loopback. Keep it on a trusted local machine; do not expose it to untrusted networks.</p>
+    <p><strong>This is not a security sandbox.</strong> Extensions execute local code with the bridge’s permissions. The bridge binds to loopback and checks trusted browser origins, but does not authenticate local programs. Keep it on a trusted local machine; do not expose it through remote proxies.</p>
   </details>
 
   <details id="setup">
@@ -204,6 +204,8 @@ just learn</code></pre>
       <thead><tr><th scope="col">Setting</th><th scope="col">Purpose</th></tr></thead>
       <tbody>
         <tr><td><code>BRIDGE_PORT</code></td><td>Default: 5178. If changed, update the API proxy in <code>vite.config.ts</code>. Launcher cleanup still targets 5178 unless changed.</td></tr>
+        <tr><td><code>LEARNVAS_LIBRARY_DIR</code></td><td>Default: <code>~/.learnvas/</code>. File-library API location; browser autosave is still separate.</td></tr>
+        <tr><td><code>LEARNVAS_TRUSTED_ORIGINS</code></td><td>Add exact HTTP(S) loopback origins for other local app ports. Vite defaults to strict port 5173.</td></tr>
         <tr><td><code>PI_CODING_AGENT_DIR</code></td><td>Use another Pi agent directory for configuration, credentials, and resources.</td></tr>
         <tr><td><code>LEARNVAS_WEB_ACCESS</code></td><td>Set to 0 to disable tutor tools, not the startup extension warmup.</td></tr>
       </tbody>

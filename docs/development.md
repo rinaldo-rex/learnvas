@@ -14,7 +14,7 @@ Run these from the project directory:
 | `just learn` | Start the bridge and browser app together. |
 | `pnpm bridge` | Start only the Pi bridge. |
 | `pnpm dev` | Start only Vite. |
-| `pnpm test` | Run Node's test runner for document serialization/validation/storage, deletion history, extension inventory, ports, and themes. |
+| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, deletion history, extension inventory, ports, and themes. |
 | `pnpm build` / `just build` | Type-check TypeScript and build the frontend into `dist/`. |
 | `pnpm preview` | Preview the built frontend; this is not a complete application launcher and does not start the bridge. |
 
@@ -25,6 +25,7 @@ flowchart TD
   A[React canvas] -->|same-origin /api| B[Vite proxy]
   B --> C[Node HTTP bridge]
   C --> D[Fresh Pi tutor session]
+  C -->|Library API clients| F[Managed .learn files]
   D --> E[Selected model provider]
   C -->|SSE text and tool events| A
 ```
@@ -52,11 +53,15 @@ Paths below are relative to the project root.
 | `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v1 schema, validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
 | `src/lib/fixtures/*.learn` | Representative portable canvases used by round-trip tests. |
 | `src/lib/theme.ts`, `src/lib/useTheme.ts`, `src/theme.css` | Theme preference, system appearance, and color tokens. |
-| `server/index.mjs` | Pi session creation, provider warmup, and HTTP endpoints. |
+| `server/index.mjs` | Pi session creation, provider warmup, and bridge startup (loopback-only). |
+| `server/http.mjs` | Trusted-origin/Host boundary, bounded JSON bodies, library routes, and structured errors. |
+| `server/library.mjs`, `server/library.test.mjs` | Revision-checked durable `.learn` operations, collision confirmation, trash/restore, recovery journals, and isolated API/failure tests. |
 | `server/extensions.mjs` | Plain-JSON projection of loader metadata, without exposing runtime objects. |
 | `vite.config.ts` | Frontend server and local API proxy. |
 
-The bridge exposes `GET /api/models`, `GET /api/extensions`, and `POST /api/chat`. Chat streams contain `delta`, `tool`, `done`, and `error` events.
+The bridge exposes `GET /api/models`, `GET /api/extensions`, `POST /api/chat`, and the [thread-library endpoints](thread-library.md#http-endpoints). Chat streams contain `delta`, `tool`, `done`, and `error` events. All routes enforce trusted local request headers. Library operations do not require model credentials or wait for Pi warmup.
+
+The bridge imports the canonical TypeScript validator using Node's built-in type stripping (Node 22.19+); no separate schema copy, database, or backend dependency is introduced. API tests use temporary directories and ephemeral loopback ports, never `~/.learnvas/`. The browser still uses its existing localStorage adapter.
 
 ## Contribution checks
 

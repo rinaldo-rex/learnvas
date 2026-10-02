@@ -6,7 +6,7 @@ A learning thread is **one complete canvas**, including any number of root conve
 
 Saved text and layout are portable without Pi or model access. **Continuing generation requires configured model credentials** and an available provider. Opening a document must never start a request, execute extensions, or restore a Pi transcript/session.
 
-The planned default file library is `~/.learnvas/<human-readable-title>.learn`. File naming, filesystem storage, named-thread UI, and export/import UI are not implemented by this format release. Filenames and titles are labels, **not identity**. Moving, copying, or renaming the file does not change its internal `threadId`; explicitly creating a new thread gives it a new ID.
+The [bridge file-library API](thread-library.md) manages `~/.learnvas/<human-readable-title>.learn`, with confirmed numbered filenames for collisions and recoverable trash. Named-thread UI, browser file-library integration, and export/import UI are not implemented. Filenames and titles are labels, **not identity**. Moving, copying, or renaming the file does not change its internal `threadId`; explicitly creating a new thread gives it a new ID.
 
 ## Envelope
 
@@ -127,4 +127,6 @@ If browser loading fails, Learnvas displays the error and disables autosave for 
 
 The browser autosaves after a 400 ms debounce and restores the saved viewport rather than fitting over it. New canvases and **Clear** receive a fresh stable thread ID. The old MVP `learnvas:v1` raw-node storage entry is intentionally ignored, not migrated or deleted. Browser-local storage is still not a backup, and closing/reloading before the debounce completes may lose the latest edits.
 
-Out of scope: Pi transcript integration, arbitrary external-file editing, attachments, collaboration, filesystem library management, and persisted undo history.
+The bridge reuses this validator and serializer directly; its [library API](thread-library.md) adds bounded sizes, filename rules, revision checks, and durable file operations without changing v1.
+
+Out of scope: Pi transcript integration, arbitrary external-file editing, attachments, collaboration, browser file-library integration, and persisted undo history.

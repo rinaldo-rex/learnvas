@@ -41,6 +41,8 @@ Set bridge environment variables before starting Learnvas:
 | --- | --- | --- |
 | `LEARNVAS_WEB_ACCESS` | Enabled | Set to `0` to disable web extension loading and tools in tutor requests. This does not disable the startup extension warmup. |
 | `BRIDGE_PORT` | `5178` | Changes the bridge's listening port. Also update the `/api` proxy target in [vite.config.ts](../vite.config.ts); the `just learn` cleanup still targets 5178 unless you change it. |
+| `LEARNVAS_LIBRARY_DIR` | `~/.learnvas/` | Trusted startup-only override for the [file-library API](thread-library.md); never accepted from browser request paths. |
+| `LEARNVAS_TRUSTED_ORIGINS` | Bridge port and `5173` on HTTP loopback hosts | Add comma-separated exact HTTP(S) loopback origins for other local frontend ports. Remote origins and paths are rejected. |
 | `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Uses another Pi agent directory for configuration, credentials, and resources. |
 
 For example:
@@ -54,5 +56,7 @@ Or, when running the bridge separately:
 ```bash
 LEARNVAS_WEB_ACCESS=0 pnpm bridge
 ```
+
+Both servers default to loopback-only binds. Vite uses a strict port 5173 rather than silently selecting an untrusted alternate port. If you intentionally change the frontend port, add its exact loopback origin to `LEARNVAS_TRUSTED_ORIGINS`. Do not expose either server to a network or change the proxy to rewrite browser Host/Origin headers.
 
 Related: [Troubleshooting](troubleshooting.md) · [Development](development.md).

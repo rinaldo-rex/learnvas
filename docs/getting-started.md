@@ -43,7 +43,7 @@ This changes your Pi package configuration. If you prefer tool-free tutoring, sk
 just learn
 ```
 
-The launcher starts the bridge on port **5178** and opens the Vite app, normally at **http://localhost:5173**. Use the URL printed by Vite if that port is already occupied. Stop the launcher with **Ctrl+C**.
+The launcher starts the loopback-only bridge on port **5178** and the Vite app on loopback port **5173**. Open the URL printed by Vite (localhost or 127.0.0.1). If port 5173 is occupied, Vite exits instead of silently choosing a different trusted origin; free the port or explicitly configure another [trusted local origin](configuration.md#environment-variables). Stop the launcher with **Ctrl+C**.
 
 > **Port cleanup:** `just learn` uses Bash and attempts to terminate any process listening on port 5178 with `fuser` before starting the bridge. Use the two-terminal approach below if you do not want automatic port cleanup.
 

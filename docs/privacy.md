@@ -10,11 +10,11 @@ The old MVP `learnvas:v1` storage is ignored, with no migration. New canvases ha
 
 Storage belongs to the browser profile and origin. Changing the hostname or port, using another profile, or clearing site data can make the canvas unavailable. Saving may fail if browser storage is blocked or full.
 
-There is currently no canvas export/import UI, filesystem library, account sync, or collaboration. Reloading does not resume generation; saved partial answers are marked stopped. Text/layout is portable, but continuing generation requires configured model credentials. Runtime objects, credentials/configuration fields, extension state, and undo stacks are not stored in the document. Text itself is not redacted.
+The bridge provides a durable [filesystem library API](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The browser is not connected to it yet, and there is no automatic migration. There is currently no canvas export/import UI, account sync, or collaboration. Reloading does not resume generation; saved partial answers are marked stopped. Text/layout is portable, but continuing generation requires configured model credentials. Runtime objects, credentials/configuration fields, extension state, and undo stacks are not stored in the document. Text itself is not redacted.
 
 Saves use a 400 ms debounce. Reloading or closing before it finishes may lose the latest changes. Storage failures are shown in the toolbar; the canvas remains editable in memory.
 
-Pi sessions are in-memory and are not saved as Pi session files by Learnvas. The browser canvas is the persisted conversation record.
+Pi sessions are in-memory and are not saved as Pi session files by Learnvas. Browser storage and API-managed `.learn` files are conversation records, not executable Pi sessions. Treat both as potentially sensitive; file-library documents retain conversation text verbatim.
 
 ## What leaves your machine
 
@@ -32,7 +32,11 @@ Web-enabled tutor requests explicitly load only `pi-web-access` with an allowlis
 
 ## Local-service security
 
-The bridge has **no authentication** and currently listens without an explicit loopback-only bind. Keep it on a trusted local machine; do not expose it to untrusted networks or deploy it as a public service without adding access controls.
+The bridge binds **127.0.0.1 only** and checks loopback peers, trusted Host headers, and trusted browser Origin/Referer headers for every endpoint. Vite also defaults to a loopback bind. Cross-site browser requests are rejected and no CORS access is granted. Library requests cannot submit arbitrary filesystem paths; symlinked directories/documents and hardlinked files are rejected.
+
+These checks are **not authentication against local programs**, which can forge headers. Use a trusted local machine and trusted apps on allowlisted origins. Do not expose the bridge through remote proxies or deploy it publicly. See [library access boundaries and configuration](thread-library.md#local-access-boundary).
+
+File writes are staged, synced, and atomic, with recovery journals for moves. Standard revision checks protect against stale browser tabs and changes detected before replacement. Stop the bridge before manually editing managed files; unrelated editors do not participate in its writer lock. Back up the library separately—trash and atomic writes are not substitutes for backups.
 
 Keep Pi credentials private. Redact API keys, tokens, private prompts, and other sensitive information from logs and bug reports.
 
