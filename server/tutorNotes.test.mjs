@@ -3,8 +3,25 @@ import test from 'node:test'
 import * as fs from 'node:fs/promises'
 import path from 'node:path'
 import { tmpdir } from 'node:os'
-import { MAX_NOTES_CHARS, TutorNotesStore, validateNotes } from './tutorNotes.mjs'
+import { MAX_NOTES_CHARS, TutorNotesStore, tutorNotesPrompt, validateNotes } from './tutorNotes.mjs'
 import { LibraryError } from './library.mjs'
+
+test('prompt composition is stable, ordered, and omits empty sections', () => {
+  const out = tutorNotesPrompt('Use mermaid diagrams.', 'Focus on intuition.')
+  assert.equal(out, [
+    "## The student's standing requests (all threads)",
+    '',
+    'Use mermaid diagrams.',
+  ].join('\n') + '\n\n' + [
+    "## The student's requests for this thread",
+    '',
+    'Focus on intuition.',
+  ].join('\n'))
+  assert.equal(tutorNotesPrompt('', ''), '')
+  assert.equal(tutorNotesPrompt('global rule', ''), "## The student's standing requests (all threads)\n\nglobal rule")
+  assert.equal(tutorNotesPrompt('', 'thread rule'), "## The student's requests for this thread\n\nthread rule")
+  assert.doesNotMatch(out, /\n{3,}/)
+})
 
 async function setup(t) {
   const directory = await fs.mkdtemp(path.join(tmpdir(), 'learnvas-notes-'))

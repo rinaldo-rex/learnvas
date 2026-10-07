@@ -187,17 +187,10 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     }, 500) as unknown as number
   }, [])
 
-  /** Thread notes ride the document's ThreadMetadata through the workspace's ordinary autosave. */
+  /** Thread notes ride the workspace's metadata patch + ordinary save queue (revision-checked). */
   const setThreadNotes = useCallback((notes: string) => {
-    const current = metadataRef.current
-    // Omit the key entirely when empty: the schema treats presence-with-empty
-    // as invalid, and validateDocument rejects it during the workspace save.
-    metadataRef.current = notes
-      ? { ...current, tutorNotes: notes }
-      : (() => { const { tutorNotes: _drop, ...rest } = current; return rest })()
-    workspace.changed()
+    workspace.patchMetadata({ tutorNotes: notes })
   }, [workspace])
-
   /* ---------- node helpers ---------- */
   const patchNode = useCallback(
     (id: string, patch: Partial<(PromptNode | ResponseNode)['data']>) => {

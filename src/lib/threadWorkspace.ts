@@ -20,6 +20,8 @@ const content = (d: LearnDocument) => JSON.stringify({ ...d, updatedAt: '' })
 /** Serializes mutations and owns revisions. Canvas bindings never survive a thread switch. */
 export class ThreadWorkspace {
   private state: WorkspaceState = { active: null, threads: emptyList(), trash: emptyList(), status: 'loading', error: null, busy: false, ready: false }
+  /** Metadata-only overlay (tutor notes) merged into captures until a save lands. */
+  private metadataOverride: Partial<LearnDocument> | null = null
   private listeners = new Set<() => void>()
   private binding: CanvasBinding | null = null
   private pending: ReturnType<typeof setTimeout> | undefined
@@ -47,12 +49,38 @@ export class ThreadWorkspace {
   private capture() {
     const active = this.state.active!.document
     const snapshot = this.binding?.snapshot() ?? active
-    return validateDocument({ ...snapshot, threadId: active.threadId, title: active.title, createdAt: active.createdAt, updatedAt: active.updatedAt })
+    // The override carries in-flight metadata edits (per-thread tutor notes)
+    // and wins over a possibly stale snapshot. It is cleared only by a
+    // metadata patch that replaces it or by activate() on thread switch —
+    // NOT after a successful save: the saved value equals the override, so
+    // clearing early would race the next canvas snapshot and resurrect the
+    // pre-edit value (observed as a second PUT without the notes).
+    return validateDocument({
+      ...snapshot,
+      ...this.metadataOverride,
+      threadId: active.threadId, title: active.title, createdAt: active.createdAt, updatedAt: active.updatedAt,
+    })
+  }
+  /** Metadata-only edit (per-thread tutor notes); merges into every capture until saved. */
+  patchMetadata(part: { tutorNotes: string }) {
+    const active = this.state.active?.document
+    if (!active) return
+    if ((active.tutorNotes ?? '') === part.tutorNotes) return // idempotent: every keystroke routes here
+    const override: Partial<LearnDocument> = { threadId: active.threadId, title: active.title, createdAt: active.createdAt, updatedAt: active.updatedAt }
+    if (part.tutorNotes) override.tutorNotes = part.tutorNotes
+    this.metadataOverride = override
+    // A conflict requires explicit retry/recovery, not background overwrites.
+    if (this.state.status !== 'conflict' && this.state.status !== 'error') {
+      this.patch({ status: 'unsaved' })
+      this.cancelTimer()
+      this.pending = setTimeout(() => { void this.retry().catch(() => {}) }, 400)
+    }
   }
   private cancelTimer() { clearTimeout(this.pending); this.pending = undefined }
   private activate(record: ThreadRecord | null) {
     this.cancelTimer()
     this.binding = null
+    this.metadataOverride = null
     this.patch({ active: record, status: 'saved', error: null })
     try { this.remember(record?.document.threadId ?? null) } catch { /* convenience only */ }
   }

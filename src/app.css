@@ -642,8 +642,8 @@ button.help-button {
 }
 
 /* ---------- tutor notes (global + per-thread) ---------- */
-.top-right-panel,
-.react-flow__panel.top-right {
+/* React Flow emits position classes as 'top right'; 'top-right' never matches. */
+.react-flow__panel.top.right {
   display: flex;
   flex-direction: column;
   align-items: flex-end;

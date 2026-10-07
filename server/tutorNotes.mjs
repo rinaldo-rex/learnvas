@@ -49,6 +49,14 @@ function parseStored(value) {
   }
 }
 
+/** Cache-stable composition: global notes first, then thread notes, each only when nonempty. */
+export function tutorNotesPrompt(globalNotes, threadNotes) {
+  const sections = []
+  if (globalNotes.trim()) sections.push(`## The student's standing requests (all threads)\n\n${globalNotes.trim()}`)
+  if (threadNotes.trim()) sections.push(`## The student's requests for this thread\n\n${threadNotes.trim()}`)
+  return sections.join('\n\n')
+}
+
 /**
  * Bounded, symlink-refusing settings file store. Injection matches
  * ThreadLibrary so failure tests can substitute an in-memory io.

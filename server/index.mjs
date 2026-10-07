@@ -12,7 +12,8 @@
 //   - the caller's requested model (or pi's default)
 import { createBridgeServer, json, readJson, trustedOrigins } from './http.mjs'
 import { ThreadLibrary } from './library.mjs'
-import { TutorNotesStore, MAX_NOTES_CHARS } from './tutorNotes.mjs'
+import { TutorNotesStore, MAX_NOTES_CHARS, tutorNotesPrompt } from './tutorNotes.mjs'
+import { emptyExtensionReport, extensionLoadReport } from './extensions.mjs'
 import {
   createAgentSession,
   ModelRuntime,
@@ -20,7 +21,6 @@ import {
   DefaultResourceLoader,
   getAgentDir,
 } from '@earendil-works/pi-coding-agent'
-import { emptyExtensionReport, extensionLoadReport } from './extensions.mjs'
 
 const PORT = Number(process.env.BRIDGE_PORT || 5178)
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('Invalid BRIDGE_PORT')
@@ -36,18 +36,6 @@ You are a text-only tutor: never mention tools, files, code, or execution.`
 
 const TUTOR_SYSTEM_WEB = `${TUTOR_SYSTEM}
 You also have web access (web_search, fetch_content, and friends). Use it when the question needs current information, precise facts you are not fully sure of, or sources the student can read for themselves — prefer searching over guessing. When you use the web, name your sources with links in the answer.`
-
-/** Cache-stable composition: global notes first, then thread notes, each only when nonempty. */
-function tutorNotesPrompt(globalNotes, threadNotes) {
-  const sections = []
-  if (globalNotes.trim()) sections.push(`## The student's standing requests (all threads)
-
-${globalNotes.trim()}`)
-  if (threadNotes.trim()) sections.push(`## The student's requests for this thread
-
-${threadNotes.trim()}`)
-  return sections.join('\n\n')
-}
 
 // Escape hatch: LEARNVAS_WEB_ACCESS=0 disables web tools for chat sessions.
 const WEB_ACCESS = process.env.LEARNVAS_WEB_ACCESS !== '0'
