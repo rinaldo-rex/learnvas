@@ -12,6 +12,8 @@ export interface ThreadMetadata {
   title: string
   createdAt: string
   updatedAt: string
+  /** Per-thread tutor notes appended to the tutor's system prompt; omitted when empty. */
+  tutorNotes?: string
 }
 
 export interface LearnViewport {
@@ -224,7 +226,9 @@ export function validateDocument(value: unknown): LearnDocument {
   if (d.version === 1) throw new LearnDocumentError('unsupported-version', 'document.version', 'schema version 1 is no longer supported; re-create the thread under the current format')
   if (d.version !== LEARN_VERSION) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: ${LEARN_VERSION}`)
   // Future versions must dispatch here to their own validators and explicit migrations.
-  fields(d, ['format', 'version', 'threadId', 'title', 'createdAt', 'updatedAt', 'cards', 'connections', 'viewport'], 'document')
+  fields(d, ['format', 'version', 'threadId', 'title', 'createdAt', 'updatedAt', 'tutorNotes', 'cards', 'connections', 'viewport'], 'document')
+  const notes = Object.hasOwn(d, 'tutorNotes') ? text(d.tutorNotes, 'document.tutorNotes') : undefined
+  if (notes !== undefined && !notes.trim()) invalid('document.tutorNotes', 'optional string fields must be omitted rather than empty')
   const v = object(d.viewport, 'document.viewport')
   fields(v, ['x', 'y', 'zoom'], 'document.viewport')
   const result: LearnDocument = {
@@ -235,6 +239,7 @@ export function validateDocument(value: unknown): LearnDocument {
     connections: array(d.connections, 'document.connections').map(connection),
     viewport: { x: number(v.x, 'document.viewport.x'), y: number(v.y, 'document.viewport.y'), zoom: number(v.zoom, 'document.viewport.zoom', true) },
   }
+  if (notes !== undefined) result.tutorNotes = notes
   if (result.updatedAt < result.createdAt) invalid('document.updatedAt', 'must not precede createdAt')
   validateGraph(result.cards, result.connections)
   return result
@@ -279,6 +284,7 @@ export function canvasToDocument(canvas: DocumentCanvas, metadata: ThreadMetadat
   return validateDocument({
     format: LEARN_FORMAT, version: LEARN_VERSION,
     threadId: metadata.threadId, title: metadata.title, createdAt: metadata.createdAt, updatedAt: metadata.updatedAt,
+    ...(metadata.tutorNotes !== undefined ? { tutorNotes: metadata.tutorNotes } : {}),
     cards,
     connections: canvas.edges.map(edge => ({
       id: edge.id, source: edge.source, target: edge.target,

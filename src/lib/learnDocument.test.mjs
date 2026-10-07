@@ -11,7 +11,7 @@ import { CANVAS_STORE_KEY, loadCanvas, saveCanvas } from './canvasStorage.ts'
 
 const fixtureUrl = new URL('./fixtures/branched.learn', import.meta.url)
 const fixture = () => JSON.parse(readFileSync(fixtureUrl, 'utf8'))
-const metadata = d => ({ threadId: d.threadId, title: d.title, createdAt: d.createdAt, updatedAt: d.updatedAt })
+const metadata = d => ({ threadId: d.threadId, title: d.title, createdAt: d.createdAt, updatedAt: d.updatedAt, ...(d.tutorNotes !== undefined ? { tutorNotes: d.tutorNotes } : {}) })
 const freeze = value => {
   if (value && typeof value === 'object') {
     Object.values(value).forEach(freeze)
@@ -226,6 +226,8 @@ const invalidCases = [
   ['active status', d => { d.cards[1].status = 'streaming' }],
   ['invalid status', d => { d.cards[1].status = 'ready' }],
   ['nonstring quote', d => { d.cards[2].quote = null }],
+  ['null tutorNotes', d => { d.tutorNotes = null }],
+  ['empty tutorNotes', d => { d.tutorNotes = '   ' }],
   ['unknown top-level field', d => { d.apiKey = 'secret' }],
   ['unknown card field', d => { d.cards[0].selected = true }],
   ['wrong kind field', d => { d.cards[1].sent = true }],
@@ -255,6 +257,18 @@ test('schema version 1 is retired without migration; v2 documents are the only a
   const d = fixture()
   d.version = 1
   assert.throws(() => validateDocument(d), error => error instanceof LearnDocumentError && error.code === 'unsupported-version' && /version 1/.test(error.message))
+})
+
+test('per-thread tutorNotes round-trips and must be omitted rather than empty', () => {
+  const d = fixture()
+  assert.equal(validateDocument(d).tutorNotes, undefined) // omission is canonical for "no notes"
+  d.tutorNotes = 'Prefer mermaid diagrams for structure.'
+  const round = parseDocument(serializeDocument(d))
+  assert.equal(round.tutorNotes, 'Prefer mermaid diagrams for structure.')
+  const canvas = documentToCanvas(round)
+  const restored = canvasToDocument(canvas, metadata(round))
+  assert.equal(restored.tutorNotes, 'Prefer mermaid diagrams for structure.')
+  assert.deepEqual(parseDocument(serializeDocument(restored)), round)
 })
 
 test('rejects malformed JSON, nonobjects, and nonfinite numbers before JSON can silently replace them', () => {
