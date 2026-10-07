@@ -22,6 +22,9 @@ export interface AppActions {
   models: ModelInfo[]
   selectedModel: string
   setSelectedModel(id: string): void
+  /** Server-backed notes applied to every thread; shared through context until the notes panel consumes it. */
+  globalNotes: string
+  setGlobalNotes(text: string): void
 }
 
 export const AppCtx = createContext<AppActions | null>(null)

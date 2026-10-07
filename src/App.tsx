@@ -18,7 +18,7 @@ import { AppCtx, type AppActions } from './actions'
 import { CommandPalette } from './components/CommandPalette'
 import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { HelpButton, HelpDialog } from './components/HelpButton'
-import { fetchModels, streamChat, type ModelInfo } from './lib/api'
+import { fetchModels, fetchTutorNotes, saveTutorNotes, streamChat, type ModelInfo } from './lib/api'
 import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
 import { canvasToDocument, documentToCanvas } from './lib/learnDocument'
 import { threadApi, type ThreadRecord } from './lib/threadApi'
@@ -80,6 +80,8 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   const [nodes, rawSetNodes] = useState<LVNode[]>(saved.nodes)
   const [edges, rawSetEdges] = useState<Edge[]>(saved.edges)
   const [models, setModels] = useState<ModelInfo[]>([])
+  const [globalNotes, setGlobalNotes] = useState('') // server-backed; '' before first load
+  const notesLoaded = useRef(false)
   const [selectedModel, setSelectedModel] = useState('') // '' = pi default
   const [zen, setZen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -161,6 +163,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   /* ---------- model list ---------- */
   useEffect(() => {
     fetchModels().then(setModels).catch(() => {})
+    fetchTutorNotes().then(notes => { notesLoaded.current = true; setGlobalNotes(notes.global) }).catch(() => { notesLoaded.current = true })
   }, [])
 
   // The bridge may restart (with a different extension-registered model set)
@@ -171,6 +174,16 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  /** Persist global notes (debounced); failures surface as a transient status, never a modal. */
+  const saveTimer = useRef(0)
+  const setGlobalNotesPersisted = useCallback((text: string) => {
+    setGlobalNotes(text)
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      saveTutorNotes(text).catch(() => {}) // re-validated upstream; store keeps last good value
+    }, 500) as unknown as number
   }, [])
 
   /* ---------- node helpers ---------- */
@@ -417,6 +430,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       streamChat({
         model,
         messages,
+        threadNotes: record.document.tutorNotes ?? '',
         signal: ac.signal,
         onDelta(t) {
           if (!ownsCanvas()) return
@@ -435,7 +449,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
         },
       })
     },
-    [setEdges, setNodes, patchNode],
+    [setEdges, setNodes, patchNode, record.document.tutorNotes],
   )
 
   const sendPrompt = useCallback(
@@ -544,8 +558,10 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       models,
       selectedModel,
       setSelectedModel,
+      globalNotes,
+      setGlobalNotes: setGlobalNotesPersisted,
     }),
-    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, models, selectedModel],
+    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, models, selectedModel, globalNotes, setGlobalNotesPersisted],
   )
 
   return (

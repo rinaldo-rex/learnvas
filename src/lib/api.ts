@@ -54,6 +54,29 @@ export async function fetchExtensions(signal?: AbortSignal): Promise<ExtensionIn
   return res.json() as Promise<ExtensionInventory>
 }
 
+export interface TutorNotes { global: string; updatedAt: string | null }
+
+export async function fetchTutorNotes(signal?: AbortSignal): Promise<TutorNotes> {
+  const res = await fetch('/api/tutor-notes', { signal })
+  if (!res.ok) throw new Error(`Tutor notes unavailable (HTTP ${res.status})`)
+  return res.json() as Promise<TutorNotes>
+}
+
+export async function saveTutorNotes(globalNotes: string): Promise<TutorNotes> {
+  const res = await fetch('/api/tutor-notes', {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ global: globalNotes }),
+  })
+  const value = await res.json()
+  if (!res.ok) throw new ThreadApiErrorWithCode(value.error ?? 'Saving tutor notes failed', value.code ?? 'request-failed')
+  return value
+}
+
+class ThreadApiErrorWithCode extends Error {
+  constructor(message: string, readonly code: string) { super(message) }
+}
+
 export interface StreamHandlers {
   onDelta(text: string): void
   onDone(): void
@@ -63,15 +86,15 @@ export interface StreamHandlers {
 
 /** POST /api/chat and consume the SSE stream. On abort: silently stops (no onDone/onError). */
 export function streamChat(
-  opts: { model: string; messages: ChatMsg[]; signal: AbortSignal } & StreamHandlers,
+  opts: { model: string; messages: ChatMsg[]; threadNotes?: string; signal: AbortSignal } & StreamHandlers,
 ): void {
-  const { model, messages, signal, onDelta, onDone, onError, onTool } = opts
+  const { model, messages, threadNotes = '', signal, onDelta, onDone, onError, onTool } = opts
   void (async () => {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: model || 'default', messages }),
+        body: JSON.stringify({ model: model || 'default', messages, ...(threadNotes ? { tutorNotes: threadNotes } : {}) }),
         signal,
       })
       if (!res.ok || !res.body) {
