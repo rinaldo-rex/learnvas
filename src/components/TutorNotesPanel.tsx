@@ -8,27 +8,46 @@ interface NotesSectionProps {
   value: string
   max: number
   active: boolean
+  /** Composite of the serving state identity (threadId or server stamp). */
+  identity: string
   onChange(value: string): void
 }
 
-function NotesSection({ title, hint, value, max, active, onChange }: NotesSectionProps) {
+function NotesSection({ title, hint, value, max, active, onChange, identity }: NotesSectionProps) {
   const [expanded, setExpanded] = useState(false)
+  // Server/store state alone renders a controlled textarea whose value prop
+  // does not change until a save lands (notes state lives in the workspace
+  // and server, not React). React then rewrites the DOM value on every
+  // commit — visibly swallowing real keystrokes. Local typed state bridges
+  // that gap; identity resets it on thread switch. Committing a save that
+  // matches what was typed does not disturb the textarea; the identity
+  // change on thread/server boundary is the only forced sync point.
+  const areaRef = useRef<HTMLTextAreaElement>(null)
+  const [typed, setTyped] = useState<string | null>(null)
+  const [seenIdentity, setSeenIdentity] = useState(identity)
+  if (seenIdentity !== identity) {
+    setSeenIdentity(identity)
+    if (typed !== null) setTyped(null) // thread switch: adopt the new thread's value
+  }
+  const shown = typed ?? value
   return (
     <details className="notes-entry" open={expanded} onToggle={e => setExpanded(e.currentTarget.open)}>
       <summary>
         {title}
-        <span className="hint">{value.trim() ? `${value.length}/${max}` : 'empty'}</span>
+        <span className="hint">{shown.trim() ? `${shown.length}/${max}` : 'empty'}</span>
       </summary>
       <p className="extensions-note">{hint}</p>
       <textarea
+        ref={areaRef}
         className="notes-textarea"
-        value={value}
+        value={shown}
         rows={4}
         maxLength={max}
         spellCheck={false}
         placeholder={active ? 'e.g. Use mermaid diagrams when a diagram explains structure' : 'No thread is active'}
         disabled={!active}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => { setTyped(e.target.value); onChange(e.target.value) }}
+        onBlur={() => setTyped(null)}
       />
     </details>
   )
@@ -96,6 +115,7 @@ export function TutorNotesPanel({ workspace, threadId, globalNotes, setGlobalNot
             value={globalNotes}
             max={MAX_TUTOR_NOTES}
             active
+            identity={`global:${globalNotes}`}
             onChange={setGlobalNotes}
           />
           <NotesSection
@@ -104,6 +124,7 @@ export function TutorNotesPanel({ workspace, threadId, globalNotes, setGlobalNot
             value={threadNotes}
             max={MAX_TUTOR_NOTES}
             active={Boolean(workspace.getSnapshot().active)}
+            identity={`thread:${threadId}:${threadNotes}`}
             onChange={onThreadNotes}
           />
         </div>

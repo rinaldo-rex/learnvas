@@ -110,6 +110,32 @@ test('edits during save remain unsaved; outgoing switch cannot abandon them', as
   await workspace.retry()
   assert.equal(workspace.getSnapshot().active.document.cards[0].text, 'second')
 })
+test('per-thread tutor notes patch, save, and clear to key-omission (no resurrection)', async () => {
+  const { workspace } = setup()
+  await workspace.start('a')
+  const document = structuredClone(workspace.getSnapshot().active.document)
+  let stopped = 0
+  workspace.bind('a', { snapshot: () => document, stop: () => { stopped++ } })
+
+  workspace.patchMetadata({ tutorNotes: 'Use mermaid diagrams.' })
+  assert.equal(workspace.getSnapshot().status, 'unsaved')
+  await workspace.retry()
+  assert.equal(workspace.getSnapshot().active.document.tutorNotes, 'Use mermaid diagrams.')
+
+  // Deleting all notes must save a document WITHOUT the key, and the value
+  // must not resurrect from a binding snapshot made before the deletion.
+  workspace.patchMetadata({ tutorNotes: '' })
+  await workspace.retry()
+  const saved = workspace.getSnapshot().active.document
+  assert.equal('tutorNotes' in saved, false, 'cleared notes must omit the field entirely')
+  assert.equal(workspace.getSnapshot().status, 'saved')
+
+  // Re-typing works after a clear (override replaces, never merges stale).
+  workspace.patchMetadata({ tutorNotes: 'Back again.' })
+  await workspace.retry()
+  assert.equal(workspace.getSnapshot().active.document.tutorNotes, 'Back again.')
+})
+
 test('rename preserves binding and uses new immutable metadata on subsequent save', async () => {
   const { workspace } = setup()
   await workspace.start('a')

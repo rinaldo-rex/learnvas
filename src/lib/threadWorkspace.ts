@@ -49,15 +49,24 @@ export class ThreadWorkspace {
   private capture() {
     const active = this.state.active!.document
     const snapshot = this.binding?.snapshot() ?? active
-    // The override carries in-flight metadata edits (per-thread tutor notes)
-    // and wins over a possibly stale snapshot. It is cleared only by a
-    // metadata patch that replaces it or by activate() on thread switch —
-    // NOT after a successful save: the saved value equals the override, so
-    // clearing early would race the next canvas snapshot and resurrect the
-    // pre-edit value (observed as a second PUT without the notes).
+    // The override carries in-flight metadata edits (per-thread tutor notes).
+    // A spread alone cannot express "key removed": patchMetadata('') stores
+    // the explicit empty string, and here that strips any snapshot notes so
+    // the validated document simply omits the field. It is never cleared
+    // after save: the saved value equals the override, and clearing early
+    // raced the next snapshot into resurrecting the pre-edit value.
+    const dropping = this.metadataOverride?.tutorNotes === ''
+    const body = dropping
+      ? (() => { const { tutorNotes: _gone, ...rest } = snapshot; return rest })()
+      : snapshot
+    const { tutorNotes: overrideNotes, ...overrideRest } = this.metadataOverride ?? {}
     return validateDocument({
-      ...snapshot,
-      ...this.metadataOverride,
+      ...body,
+      ...overrideRest,
+      // '' means "removed": omit the key (the schema rejects empty strings).
+      ...(dropping || (overrideNotes !== undefined && !overrideNotes.trim())
+        ? {}
+        : (overrideNotes !== undefined ? { tutorNotes: overrideNotes } : {})),
       threadId: active.threadId, title: active.title, createdAt: active.createdAt, updatedAt: active.updatedAt,
     })
   }
@@ -66,8 +75,10 @@ export class ThreadWorkspace {
     const active = this.state.active?.document
     if (!active) return
     if ((active.tutorNotes ?? '') === part.tutorNotes) return // idempotent: every keystroke routes here
-    const override: Partial<LearnDocument> = { threadId: active.threadId, title: active.title, createdAt: active.createdAt, updatedAt: active.updatedAt }
-    if (part.tutorNotes) override.tutorNotes = part.tutorNotes
+    const override: Partial<LearnDocument> & { tutorNotes: string } = {
+      threadId: active.threadId, title: active.title, createdAt: active.createdAt, updatedAt: active.updatedAt,
+      tutorNotes: part.tutorNotes, // '' expresses deletion for capture()
+    }
     this.metadataOverride = override
     // A conflict requires explicit retry/recovery, not background overwrites.
     if (this.state.status !== 'conflict' && this.state.status !== 'error') {
