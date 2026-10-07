@@ -138,6 +138,7 @@
     <h3>Click a +</h3>
     <p>Hover over a card to reveal <strong>+</strong> buttons on its unused sides. Click one to create a connected blank prompt on that side. If every side is connected, a top-right <strong>+</strong> remains available—there is no connection-count limit.</p>
     <p class="note">Both actions create a draft, not an immediate request. Sending it uses the currently selected model and that branch’s ancestral conversation history. Other branches are not included.</p>
+    <p>Every question also picks up your <strong>tutor notes</strong> (the <strong>Notes</strong> chip at the top-right): standing requests like “use mermaid diagrams for structure” that shape each answer. Global notes apply to all threads; thread notes apply to the current one. Edits affect new questions, not answers already on the canvas.</p>
     <p>For an unrelated topic, click <strong>＋ New prompt</strong> in the toolbar instead. It creates a separate root conversation.</p>
   </section>
 
@@ -157,7 +158,7 @@
         <tr><td>Reset the canvas</td><td>Click <strong>Clear</strong> and confirm. Your theme preference and Pi credentials are not cleared.</td></tr>
         <tr><td>Change appearance</td><td>Choose <strong>Theme: System / Light / Dark</strong>. The choice is remembered; System follows OS changes.</td></tr>
         <tr><td>Open help</td><td>Press <kbd>?</kbd> (<kbd>Shift</kbd> + <kbd>/</kbd> on a US keyboard), or click the <strong>?</strong> button. Close with <kbd>Esc</kbd>, <strong>Close ×</strong>, or a click outside the overlay.</td></tr>
-        <tr><td>Zen mode</td><td>Press <kbd>Z</kbd> to hide or restore the toolbar, extensions panel, help button, zoom controls, and minimap. Cards and their controls stay visible.</td></tr>
+        <tr><td>Zen mode</td><td>Press <kbd>Z</kbd> to hide or restore the toolbar, extensions panel, notes chip, help button, zoom controls, and minimap. Cards and their controls stay visible.</td></tr>
         <tr><td>Command palette</td><td>Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd>. No commands yet; <kbd>Esc</kbd> closes it.</td></tr>
       </tbody>
     </table>
@@ -171,6 +172,7 @@
     <p>The toolbar separates provider and model selection. <strong>pi default</strong> delegates the choice to Pi. A listed model still needs account permission and available quota.</p>
     <p>At startup, the bridge loads Pi extensions for provider/model registration, then disposes that session. Tutor requests do not reload that entire extension set.</p>
     <p>The <strong>Extensions</strong> accordion is read-only. It shows startup-loaded extensions, their source paths and capabilities, load diagnostics, and tutor extension configuration. <strong>Refresh inventory</strong> reads the last load snapshot; it does not enable, disable, install, or reload anything.</p>
+    <p>The <strong>Notes</strong> chip opens two accordions: <strong>Global · all threads</strong> (stored once per machine alongside the library) and <strong>This thread</strong> (saved inside the thread’s <code>.learn</code> file, so it travels on export/import). Both are capped at 4000 characters and applied automatically to every new question.</p>
     <p>With web access enabled, tutor requests load only <code>pi-web-access</code> and allow <code>web_search</code>, <code>source_check</code>, <code>fetch_content</code>, and <code>get_search_content</code>. Set <code>LEARNVAS_WEB_ACCESS=0</code> before starting the bridge to make tutor requests tool-free.</p>
     <p class="note">Restart the bridge after changing Pi extension configuration. The inventory is not a list of every installed package.</p>
   </details>
@@ -179,7 +181,7 @@
     <summary>Saving, privacy, and safety</summary>
     <ul>
       <li>Open <strong>Threads</strong> to create, switch, rename, trash, or restore a named canvas. Tab and Enter navigate threads; Esc closes the panel. The panel fits narrow screens and hides in zen mode.</li>
-      <li>Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport autosave as <code>.learn</code> files under <code>~/.learnvas/</code>. Browser storage remembers only the last thread and theme. Old browser canvases are not automatically migrated.</li>
+      <li>Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, per-thread tutor notes, and viewport autosave as <code>.learn</code> files under <code>~/.learnvas/</code>. Global tutor notes live in a separate <code>tutor-notes.json</code> in the same directory. Browser storage remembers only the last thread and theme. Old browser canvases are not automatically migrated.</li>
       <li>Switching stops generation, flushes partial answers, saves the outgoing canvas, and resets undo history. Errors/conflicts keep it available: retry saving or enter a new title and save a recovery copy. Invalid library files are preserved with warnings.</li>
       <li>Saves are debounced by 400 ms; closing or reloading before saving finishes may lose recent changes. Back up library files separately. There is no account sync or collaboration.</li>
       <li><strong>Import .learn</strong> validates UTF-8 content, format, version, graph, and an 8 MiB limit. Confirm the title to add it to the library without switching your canvas. Duplicate IDs require approval of a separate copy; filename collisions require confirmation of a numbered name. Cancel adds nothing. Uploaded originals are never changed.</li>

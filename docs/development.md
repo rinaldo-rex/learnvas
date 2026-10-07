@@ -14,7 +14,7 @@ Run these from the project directory:
 | `just learn` | Start the bridge and browser app together. |
 | `pnpm bridge` | Start only the Pi bridge. |
 | `pnpm dev` | Start only Vite. |
-| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, thread switching/save failures/conflicts/stream ownership, portable import/export/cancellation/size bounds/cross-library round trips, deletion history, extension inventory, ports, and themes. |
+| `pnpm test` | Run Node's test runner for document serialization/validation/storage, isolated file-library APIs/security/recovery, global tutor-notes store security, thread switching/save failures/conflicts/stream ownership, portable import/export/cancellation/size bounds/cross-library round trips, deletion history, extension inventory, ports, and themes. |
 | `pnpm build` / `just build` | Type-check TypeScript and build the frontend into `dist/`. |
 | `pnpm preview` | Preview the built frontend; this is not a complete application launcher and does not start the bridge. |
 
@@ -52,17 +52,19 @@ Paths below are relative to the project root.
 | `src/lib/threadApi.ts`, `src/lib/threadWorkspace.ts` | Typed library client, queued mutations, revision-aware switching/autosave, import copy confirmation, and export save/read verification. |
 | `src/lib/portableDocument.ts`, `src/lib/portableDocument.test.mjs` | Bounded portable uploads/downloads and isolated cross-library/error/collision tests. |
 | `src/components/ThreadPanel.tsx` | Accessible collapsible thread management and file controls. |
+| `src/components/TutorNotesPanel.tsx` | Collapsed top-right notes overlay: global and per-thread tutor notes with accordions. |
 | `src/lib/ports.ts` | Available sides, branch placement, and response direction. |
-| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v1 schema, validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
+| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v2 schema, validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
 | `src/lib/fixtures/*.learn` | Representative portable canvases used by round-trip tests. |
 | `src/lib/theme.ts`, `src/lib/useTheme.ts`, `src/theme.css` | Theme preference, system appearance, and color tokens. |
 | `server/index.mjs` | Pi session creation, provider warmup, and bridge startup (loopback-only). |
 | `server/http.mjs` | Trusted-origin/Host boundary, bounded JSON bodies, library routes, and structured errors. |
 | `server/library.mjs`, `server/library.test.mjs` | Revision-checked durable `.learn` operations, collision confirmation, trash/restore, recovery journals, and isolated API/failure tests. |
+| `server/tutorNotes.mjs`, `server/tutorNotes.test.mjs` | Bounded global tutor-notes store (`~/.learnvas/tutor-notes.json`), atomic saves, symlink refusal, and isolated tests. |
 | `server/extensions.mjs` | Plain-JSON projection of loader metadata, without exposing runtime objects. |
 | `vite.config.ts` | Frontend server and local API proxy. |
 
-The bridge exposes `GET /api/models`, `GET /api/extensions`, `POST /api/chat`, and the [thread-library endpoints](thread-library.md#http-endpoints). Chat streams contain `delta`, `tool`, `done`, and `error` events. All routes enforce trusted local request headers. Library operations do not require model credentials or wait for Pi warmup.
+The bridge exposes `GET /api/models`, `GET /api/extensions`, `GET/PUT /api/tutor-notes`, `POST /api/chat`, and the [thread-library endpoints](thread-library.md#http-endpoints). Chat streams contain `delta`, `tool`, `done`, and `error` events. Chat requests may carry an optional `tutorNotes` string (the thread's notes) that the bridge composes with the global notes store into the tutor session's appended system prompt. All routes enforce trusted local request headers. Library operations do not require model credentials or wait for Pi warmup.
 
 The bridge imports the canonical TypeScript validator using Node's built-in type stripping (Node 22.19+); no separate schema copy, database, or backend dependency is introduced. API tests use temporary directories and ephemeral loopback ports, never `~/.learnvas/`. The browser uses `threadApi.ts` and the serial mutation controller `threadWorkspace.ts`. `ThreadPanel.tsx` provides the collapsible sidebar; `streamOwner.ts` invalidates late generation callbacks when stopped/unmounted. Canvas bindings capture synchronous refs, including flushed stream buffers, before switching. A keyed provider remount resets graph and deletion history; saved viewports are applied on initialization. Legacy `canvasStorage.ts` remains only as a tested adapter, not active persistence.
 

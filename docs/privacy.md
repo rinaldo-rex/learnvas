@@ -4,7 +4,7 @@
 
 ## What is saved
 
-Named canvases autosave as [portable `.learn` v1 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport.
+Named canvases autosave as [portable `.learn` v2 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, per-thread tutor notes, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport.
 
 Browser `localStorage` holds only convenience preferences: `learnvas:last-thread` and `learnvas:theme`. Clearing site data does not delete library files. Old `learnvas:document` and `learnvas:v1` canvases are ignored, without automatic migration or deletion. Invalid/unsupported library files are preserved and reported as warnings, never rewritten silently.
 
@@ -12,7 +12,7 @@ The **Threads** panel imports validated files into the library and exports a sav
 
 Saves use a 400 ms debounce. Reloading or closing before it finishes may lose the latest changes. Storage failures/conflicts are shown in the toolbar and thread panel; the canvas remains editable in memory. Switching refuses to abandon unsaved work. Retry explicitly, or save a separately named recovery copy. Stop the bridge before manually editing library files.
 
-Pi sessions are in-memory and are not saved as Pi session files by Learnvas. `.learn` files are conversation records, not executable Pi sessions. Treat both as potentially sensitive; file-library documents retain conversation text verbatim.
+Pi sessions are in-memory and are not saved as Pi session files by Learnvas. `.learn` files are conversation records, not executable Pi sessions. Treat both as potentially sensitive; file-library documents retain conversation text verbatim. Tutor notes are part of prompt text: global notes live in `~/.learnvas/tutor-notes.json` and per-thread notes inside each `.learn` document, both verbatim and unredacted — write notes with the same care as prompts.
 
 ## What leaves your machine
 
@@ -22,7 +22,7 @@ Responses can be inaccurate. Verify important claims and sources, especially for
 
 ## Tutor isolation
 
-Each request creates a fresh, in-memory Pi session with a Learnvas tutor system prompt. It does not load `AGENTS.md` context files, skills, prompt templates, or Pi themes into the tutor session. Built-in file and shell tools are not enabled.
+Each request creates a fresh, in-memory Pi session with a Learnvas tutor system prompt. It does not load `AGENTS.md` context files, skills, prompt templates, or Pi themes into the tutor session. Built-in file and shell tools are not enabled. Global and per-thread tutor notes are appended through Pi's own `appendSystemPrompt` mechanism; passing it also disables `APPEND_SYSTEM.md` file discovery, so the session prompt stays exactly: tutor instructions plus your notes.
 
 Web-enabled tutor requests explicitly load only `pi-web-access` with an allowlisted tool set. Tool-free requests load no extensions and have no tools. The bridge separately loads Pi extensions at startup for provider/model registration; see [Models and configuration](configuration.md).
 

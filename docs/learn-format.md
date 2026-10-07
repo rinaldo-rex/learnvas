@@ -1,4 +1,4 @@
-# Portable `.learn` document format — v1
+# Portable `.learn` document format — v2
 
 [← Learnvas](../README.md)
 
@@ -15,11 +15,12 @@ All fields below are required. A document is identified by its **format marker a
 | Field | v1 value / meaning |
 | --- | --- |
 | `format` | Exactly `"learnvas"`. |
-| `version` | Integer `1`. |
+| `version` | Integer `2`. |
 | `threadId` | Stable, nonempty string. Learnvas generates a UUID for new threads; readers treat IDs as opaque strings. |
 | `title` | Nonempty human-readable title; chosen by the user when creating a thread. |
 | `createdAt` | Valid UTC timestamp, exactly `YYYY-MM-DDTHH:mm:ss.sssZ`. Immutable during ordinary saves. |
 | `updatedAt` | Same timestamp syntax, not earlier than `createdAt`; timestamp of the saved snapshot. |
+| `tutorNotes` | Optional string (up to 4000 characters when saved): standing tutor requests for this thread, appended to the tutor's system prompt alongside the global notes store. Empty/whitespace values must be **omitted** rather than saved and round-trip verbatim otherwise. Threads without notes simply lack the field. |
 | `cards` | Ordered array of prompt and response records. Empty is valid. |
 | `connections` | Ordered array of directed connections. Empty is valid. |
 | `viewport` | `{ "x": number, "y": number, "zoom": number }`: canvas translation and zoom. `x`/`y` must be finite; `zoom` must be finite and positive. |
@@ -101,9 +102,9 @@ These constraints keep conversation ancestry unambiguous for future generation.
 
 ## Validation and version/migration boundary
 
-v1 is **strict**: missing required fields, incorrect types, unknown fields at any level, invalid dates, invalid dimensions/viewport values, and invalid graph references are rejected. Values are not coerced. Optional fields must be omitted rather than set to `null`. A plain JSON object is required. Standard `JSON.parse` semantics apply.
+v2 is **strict**: missing required fields, incorrect types, unknown fields at any level, invalid dates, invalid dimensions/viewport values, and invalid graph references are rejected. Values are not coerced. Optional fields must be omitted rather than set to `null`. A plain JSON object is required. Standard `JSON.parse` semantics apply.
 
-`validateDocument` checks the marker and version before validating the v1 body. This is the migration boundary: future schema versions need their own validator and explicit migration path. There are currently **no migrations**. Unsupported positive integer versions fail with `unsupported-version` and a message naming the version and the supported version. Missing/invalid markers fail with `invalid-format`; malformed JSON fails with `invalid-json`; other malformed fields fail with `invalid-document`. Errors include a field path. No silent downgrade, best-effort rewrite, or extension-based fallback is allowed.
+`validateDocument` checks the marker and version before validating the body. This is the migration boundary: future schema versions need their own validator and explicit migration path. **Version 1 is retired without a migration** (early-stage format, no external users): v1 documents fail with `unsupported-version` and a message saying so, distinguishable from genuinely future versions. Unsupported positive integer versions fail with `unsupported-version` and a message naming the version and the supported version. Missing/invalid markers fail with `invalid-format`; malformed JSON fails with `invalid-json`; other malformed fields fail with `invalid-document`. Errors include a field path. No silent downgrade, best-effort rewrite, or extension-based fallback is allowed.
 
 Parsing and validation are read-only and return detached canonical objects. Serializing validates **before** JSON encoding so invalid numbers, undefined fields, and unexpected fields cannot quietly disappear. Helpers do not open, rename, truncate, or rewrite files. A caller must successfully validate before replacing current state or saving; rejected documents remain untouched.
 
@@ -129,6 +130,6 @@ Invalid/unsupported library documents are preserved with warnings. Save failures
 
 The browser autosaves through the bridge after a 400 ms debounce and restores each thread's saved viewport rather than fitting over it. New threads receive fresh stable IDs; **Clear** retains the active thread identity. Old `learnvas:document` and MVP `learnvas:v1` browser records are ignored, not migrated or deleted. Closing/reloading before saving finishes may lose the latest edits; back up library files separately.
 
-The bridge reuses this validator and serializer directly; its [library API](thread-library.md) adds bounded sizes, filename rules, revision checks, and durable file operations without changing v1.
+The bridge reuses this validator and serializer directly; its [library API](thread-library.md) adds bounded sizes, filename rules, revision checks, and durable file operations without changing v2.
 
 Out of scope: Pi transcript integration, arbitrary external-file editing, attachments, collaboration, automatic legacy migration, and persisted undo history.

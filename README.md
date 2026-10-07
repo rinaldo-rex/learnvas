@@ -36,10 +36,10 @@ Open the URL printed by Vite, normally **http://localhost:5173**. Type a questio
 | Guide | Contents |
 | --- | --- |
 | [Getting started](docs/getting-started.md) | Requirements, Pi authentication, web extension setup, and launch options. |
-| [Using the canvas](docs/usage.md) | Branching, shortcuts, model comparison, navigation, and card controls. |
+| [Using the canvas](docs/usage.md) | Branching, shortcuts, model comparison, navigation, card controls, and tutor notes. |
 | [Models and configuration](docs/configuration.md) | Provider selection, extension inventory, and environment variables. |
 | [Data and privacy](docs/privacy.md) | Local persistence, limitations, tutor isolation, and security precautions. |
-| [Portable `.learn` format](docs/learn-format.md) | v1 document schema, validation, canonical fields, and fixtures. |
+| [Portable `.learn` format](docs/learn-format.md) | v2 document schema, validation, canonical fields, and fixtures. |
 | [Local thread library API](docs/thread-library.md) | Thread controls, import/export, revisions, collision confirmation, trash/restore, and recovery. |
 | [Development](docs/development.md) | Commands, architecture, source map, and contribution checks. |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and useful details for bug reports. |

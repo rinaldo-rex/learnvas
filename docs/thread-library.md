@@ -2,7 +2,7 @@
 
 [← Learnvas](../README.md)
 
-The bridge manages one self-contained [v1 `.learn` document](learn-format.md) per canvas under **`~/.learnvas/`**. It creates the directory and its **`.trash/`** subdirectory as needed, with private directory/file permissions for newly created entries.
+The bridge manages one self-contained [v2 `.learn` document](learn-format.md) per canvas under **`~/.learnvas/`**. It creates the directory and its **`.trash/`** subdirectory as needed, with private directory/file permissions for newly created entries.
 
 The browser's **Threads** button opens a collapsible, keyboard-accessible sidebar. Create a named thread, select a saved thread, rename the active thread, move it to Trash, or view Trash and restore it. Every thread owns a complete canvas. Autosave uses these APIs, not browser canvas storage; the browser remembers only the last active ID and theme. Other profiles can reopen the same library.
 
@@ -54,7 +54,7 @@ Read/create/save/rename/trash/restore return:
 
 ```json
 {
-  "document": { "format": "learnvas", "version": 1 },
+  "document": { "format": "learnvas", "version": 2 },
   "filename": "Physics.learn",
   "revision": "<opaque revision token>"
 }
@@ -66,7 +66,7 @@ List responses are `{ threads, warnings }`. Each summary has `threadId`, `title`
 
 ## Filename collisions need confirmation
 
-Filenames preserve readable Unicode titles while replacing filesystem separators/reserved characters, avoiding special/reserved names, and bounding filename bytes. Titles are nonempty, at most 200 characters, without control characters. Managed IDs are at most 256 characters and cannot contain separators, control characters, or traversal components. These are library restrictions in addition to v1 schema validation.
+Filenames preserve readable Unicode titles while replacing filesystem separators/reserved characters, avoiding special/reserved names, and bounding filename bytes. Titles are nonempty, at most 200 characters, without control characters. Managed IDs are at most 256 characters and cannot contain separators, control characters, or traversal components. These are library restrictions in addition to v2 schema validation.
 
 Collisions are checked case-insensitively, including invalid files and directories. The bridge proposes a numbered name but **does not write until it is confirmed**:
 

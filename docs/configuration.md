@@ -41,9 +41,9 @@ Set bridge environment variables before starting Learnvas:
 | --- | --- | --- |
 | `LEARNVAS_WEB_ACCESS` | Enabled | Set to `0` to disable web extension loading and tools in tutor requests. This does not disable the startup extension warmup. |
 | `BRIDGE_PORT` | `5178` | Changes the bridge's listening port. Also update the `/api` proxy target in [vite.config.ts](../vite.config.ts); the `just learn` cleanup still targets 5178 unless you change it. |
-| `LEARNVAS_LIBRARY_DIR` | `~/.learnvas/` | Trusted startup-only override for the [file-library API](thread-library.md); never accepted from browser request paths. |
+| `LEARNVAS_LIBRARY_DIR` | `~/.learnvas/` | Trusted startup-only override for the [file-library API](thread-library.md) **and** the global tutor-notes file (`tutor-notes.json` in the same directory); never accepted from browser request paths. |
 | `LEARNVAS_TRUSTED_ORIGINS` | Bridge port and `5173` on HTTP loopback hosts | Add comma-separated exact HTTP(S) loopback origins for other local frontend ports. Remote origins and paths are rejected. |
-| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Uses another Pi agent directory for configuration, credentials, and resources. |
+| `PI_CODING_AGENT_DIR` | `~/.pi/agent` | Uses another Pi agent directory for configuration, credentials, and resources. Tutor sessions ignore `APPEND_SYSTEM.md`/`SYSTEM.md` files there; the notes chip controls what is appended. |
 
 For example:
 

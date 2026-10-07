@@ -29,6 +29,15 @@ flowchart TD
 
 A selected passage or **+** creates a **draft**, not an immediate model request. Sending the draft uses the model selected at that moment and includes its ancestral conversation history. Other branches are not included.
 
+## Tune the tutor with notes
+
+Open the **Notes** chip in the top-right for standing requests the tutor follows on every new question — for example “use mermaid diagrams for structure” or “keep answers under 300 words”.
+
+- **Global · all threads** applies everywhere and is stored once per machine in `~/.learnvas/tutor-notes.json`.
+- **This thread** applies only here, is saved inside the thread's `.learn` file, and travels with export/import.
+
+Edits shape answers from the next question onward; they do not rewrite answers already on the canvas. Both sections cap at 4000 characters. Notes are plain instructions for the tutor — avoid pasting secrets into them (see [privacy](privacy.md)).
+
 For example, ask “How do neural networks learn?”, select “gradient descent” in the answer, and write “Can you elaborate more on this?” in the new quoted prompt. The explanation becomes a new response on that branch.
 
 ## Controls and shortcuts
@@ -50,7 +59,8 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Reset the canvas | Click **Clear** and confirm. This removes the current canvas, not your theme preference or Pi credentials. |
 | Change appearance | Choose **Theme: System**, **Light**, or **Dark**. System mode reacts to OS appearance changes. |
 | Open help | Press **?** (**Shift+/** on a US keyboard) or click **?** at the top-right. Close the overlay with **Esc**, **Close ×**, or a click outside it. |
-| Toggle zen mode | Press **Z** to hide or restore the thread controls, toolbar, extensions panel, help button, zoom controls, and minimap. Cards and their controls stay visible. |
+| Toggle zen mode | Press **Z** to hide or restore the thread controls, toolbar, extensions panel, notes chip, help button, zoom controls, and minimap. Cards and their controls stay visible. |
+| Tune the tutor | Click the **Notes** chip (top-right) for standing requests: **Global · all threads** applies everywhere; **This thread** applies here and travels on export/import. Applied to every new question. |
 | Command palette | Press **Ctrl+K** / **Cmd+K**. The palette is empty for now; **Esc** closes it. |
 
 The single-key shortcuts (**X**, **?**, **Z**) do not run while typing in an input or while a modal is open. Holding a key down does not repeat an action.
