@@ -2,7 +2,7 @@
 
 ## Automated
 
-- pnpm test → 152/152 pass (format, notes store, library/API, workspace, portable, theme, ports)
+- pnpm test → 154/154 pass (format, notes store, library/API, workspace incl. notes patch/clear regression, portable, theme, ports)
 - pnpm build → tsc --noEmit + vite build clean
 
 ## Bridge endpoints (curl-equivalent via node http)
@@ -34,3 +34,12 @@
 ## Not verified in this run
 
 - Provider prompt-cache CH% visibility (requires provider metrics; covered by issue #9)
+
+## Real-keystroke fix round
+
+The session above verified programmatic onChange calls only; real CDP keystrokes then exposed two bugs, both fixed and re-verified by real typing:
+
+- Thread textarea swallowed keystrokes (controlled value did not change until save landed; React commit rewrote the DOM value on every status-flip re-render).
+- Clearing notes to empty never persisted (spread merge cannot remove a key; the previous value resurrected on the next capture).
+
+Re-verified live: type → saved; clear → field omitted; re-type → saved; global typing unaffected; Esc/outside-click close; zen hides chip; thread switch adopts each thread's own value; export/import carries tutorNotes.
