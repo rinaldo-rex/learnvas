@@ -46,9 +46,7 @@ ${globalNotes.trim()}`)
   if (threadNotes.trim()) sections.push(`## The student's requests for this thread
 
 ${threadNotes.trim()}`)
-  return sections.join('
-
-')
+  return sections.join('\n\n')
 }
 
 // Escape hatch: LEARNVAS_WEB_ACCESS=0 disables web tools for chat sessions.
