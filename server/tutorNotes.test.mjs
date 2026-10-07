@@ -78,6 +78,15 @@ test('reads refuse a symlinked notes path; replacing entries never writes throug
   assert.equal(stat.isSymbolicLink(), false)
 })
 
+test('saving creates a missing library directory instead of failing the first note', async t => {
+  const root = await fs.mkdtemp(path.join(tmpdir(), 'learnvas-notes-fresh-'))
+  t.after(() => fs.rm(root, { recursive: true, force: true }))
+  const store = new TutorNotesStore({ directory: path.join(root, 'library') })
+  const saved = await store.save({ global: 'first note' })
+  assert.equal(saved.global, 'first note')
+  assert.deepEqual(await store.read(), saved)
+})
+
 test('injected io failures surface as library io errors with a retry hint', async t => {
   const directory = await fs.mkdtemp(path.join(tmpdir(), 'learnvas-notes-io-'))
   t.after(() => fs.rm(directory, { recursive: true, force: true }))

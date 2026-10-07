@@ -108,7 +108,11 @@ export class TutorNotesStore {
       const trimmed = global.trim() ? global : ''
       const record = { ...validateNotes({ global: trimmed }), updatedAt: new Date().toISOString() }
       const bytes = Buffer.from(JSON.stringify(record, null, 2) + '\n')
-      const staged = path.join(path.dirname(this.file), `.pending-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      const directory = path.dirname(this.file)
+      // The notes file may be a library's very first write, before ThreadLibrary
+      // has ever needed to create ~/.learnvas.
+      try { await this.io.mkdir(directory, { recursive: true, mode: 0o700 }) } catch (error) { if (error.code !== 'EEXIST') throw error }
+      const staged = path.join(directory, `.pending-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       const handle = await this.io.open(staged, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | nofollow, 0o600)
       try {
         await handle.writeFile(bytes)
@@ -118,7 +122,7 @@ export class TutorNotesStore {
       }
       try {
         await this.io.rename(staged, this.file)
-        const dir = await this.io.open(path.dirname(this.file), constants.O_RDONLY | constants.O_DIRECTORY | nofollow)
+        const dir = await this.io.open(directory, constants.O_RDONLY | constants.O_DIRECTORY | nofollow)
         try { await dir.sync() } finally { await dir.close() }
       } catch (error) {
         await this.io.unlink(staged).catch(() => {})

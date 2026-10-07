@@ -7,12 +7,44 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { ThreadLibrary, MAX_DOCUMENT_BYTES, filenameForTitle } from './library.mjs'
+import { TutorNotesStore } from './tutorNotes.mjs'
 import { createBridgeServer, trustedOrigins, guardRequest, MAX_REQUEST_BYTES } from './http.mjs'
 
 const fixture = JSON.parse(await fs.readFile(new URL('../src/lib/fixtures/branched.learn', import.meta.url), 'utf8'))
 const document = (title = 'Physics', overrides = {}) => ({ ...structuredClone(fixture), threadId: randomUUID(), title, ...overrides })
 const code = expected => error => { assert.equal(error.code, expected); return true }
 const injected = name => Object.assign(new Error(name), { code: name })
+
+test('tutor-notes endpoint validates, persists, and answers reads from the store', async t => {
+  const context = await setup(t)
+  const { request } = await api(t, {
+    tutorNotes: new TutorNotesStore({ directory: context.directory }),
+  })
+  const empty = await request('/api/tutor-notes')
+  assert.equal(empty.status, 200)
+  assert.deepEqual(empty.body, { global: '', updatedAt: null })
+  const saved = await request('/api/tutor-notes', 'PUT', { global: 'Keep answers focused.' })
+  assert.equal(saved.status, 200)
+  assert.equal(saved.body.global, 'Keep answers focused.')
+  assert.match(saved.body.updatedAt, /^\d{4}-/)
+  const bad = [
+    [{ }, 400, 'invalid-request'], [{ global: {} }, 400, 'invalid-request'],
+    [{ global: 1 }, 400, 'invalid-request'],
+    [{ global: 'x', extra: 1 }, 400, 'invalid-request'],
+    [{ global: 'x'.repeat(4001) }, 413, 'notes-too-large'],
+    ['{', 400, 'invalid-json'],
+  ]
+  for (const [body, status, codeExpected] of bad) {
+    const response = await request('/api/tutor-notes', 'PUT', body)
+    assert.equal(response.status, status, JSON.stringify(body))
+    assert.equal(response.body.code, codeExpected, JSON.stringify(body))
+  }
+  const wrongMethod = await request('/api/tutor-notes', 'POST', { global: 'x' })
+  assert.equal(wrongMethod.status, 405)
+  const reloaded = await request('/api/tutor-notes')
+  assert.equal(reloaded.body.global, 'Keep answers focused.')
+  assert.equal(reloaded.body.updatedAt, saved.body.updatedAt)
+})
 async function setup(t, options = {}) {
   const root = await fs.mkdtemp(path.join(tmpdir(), 'learnvas-library-test-'))
   const directory = path.join(root, 'library')
@@ -22,7 +54,7 @@ async function setup(t, options = {}) {
 async function api(t, options = {}) {
   const context = await setup(t, options)
   const origins = trustedOrigins()
-  const server = createBridgeServer({ library: context.library, origins, fallback: (_req, res) => { res.writeHead(200); res.end('{}') } })
+  const server = createBridgeServer({ library: context.library, tutorNotes: options.tutorNotes ?? null, origins, fallback: (_req, res) => { res.writeHead(200); res.end('{}') } })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   const origin = `http://127.0.0.1:${server.address().port}`
   origins.add(origin)

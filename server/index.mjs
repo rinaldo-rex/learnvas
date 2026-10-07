@@ -12,6 +12,7 @@
 //   - the caller's requested model (or pi's default)
 import { createBridgeServer, json, readJson, trustedOrigins } from './http.mjs'
 import { ThreadLibrary } from './library.mjs'
+import { TutorNotesStore } from './tutorNotes.mjs'
 import {
   createAgentSession,
   ModelRuntime,
@@ -25,6 +26,7 @@ const PORT = Number(process.env.BRIDGE_PORT || 5178)
 if (!Number.isInteger(PORT) || PORT < 1 || PORT > 65535) throw new Error('Invalid BRIDGE_PORT')
 const ORIGINS = trustedOrigins(PORT, process.env.LEARNVAS_TRUSTED_ORIGINS)
 const library = new ThreadLibrary({ directory: process.env.LEARNVAS_LIBRARY_DIR || undefined })
+const tutorNotes = new TutorNotesStore({ directory: process.env.LEARNVAS_LIBRARY_DIR || undefined })
 
 const TUTOR_SYSTEM = `You are the tutor inside Learnvas, a learning canvas where every question and answer lives as a card that the student can branch from.
 Teach clearly: short paragraphs, bold the key terms when you introduce them, use concrete analogies, and define jargon the first time it appears.
@@ -34,6 +36,20 @@ You are a text-only tutor: never mention tools, files, code, or execution.`
 
 const TUTOR_SYSTEM_WEB = `${TUTOR_SYSTEM}
 You also have web access (web_search, fetch_content, and friends). Use it when the question needs current information, precise facts you are not fully sure of, or sources the student can read for themselves — prefer searching over guessing. When you use the web, name your sources with links in the answer.`
+
+/** Cache-stable composition: global notes first, then thread notes, each only when nonempty. */
+function tutorNotesPrompt(globalNotes, threadNotes) {
+  const sections = []
+  if (globalNotes.trim()) sections.push(`## The student's standing requests (all threads)
+
+${globalNotes.trim()}`)
+  if (threadNotes.trim()) sections.push(`## The student's requests for this thread
+
+${threadNotes.trim()}`)
+  return sections.join('
+
+')
+}
 
 // Escape hatch: LEARNVAS_WEB_ACCESS=0 disables web tools for chat sessions.
 const WEB_ACCESS = process.env.LEARNVAS_WEB_ACCESS !== '0'
@@ -53,7 +69,7 @@ function parseModelId(id) {
   return i > 0 ? { provider: id.slice(0, i), id: id.slice(i + 1) } : null
 }
 
-async function makeSession(modelRef, { loadExtensions = false, webAccess = false } = {}) {
+async function makeSession(modelRef, { loadExtensions = false, webAccess = false, notes = '' } = {}) {
   const loader = new DefaultResourceLoader({
     cwd: process.cwd(),
     agentDir: getAgentDir(),
@@ -63,6 +79,10 @@ async function makeSession(modelRef, { loadExtensions = false, webAccess = false
     // (pi.registerProvider / pi.registerVirtualModel) land in the shared
     // ModelRuntime; per-request chat sessions skip them.
     systemPrompt: webAccess ? TUTOR_SYSTEM_WEB : TUTOR_SYSTEM,
+    // Student notes ride the SDK's native append mechanism. Passing this
+    // option also disables APPEND_SYSTEM.md discovery, so tutor isolation
+    // stays deterministic even if the user later creates one.
+    ...(notes ? { appendSystemPrompt: [notes] } : {}),
     noContextFiles: true,
     noExtensions: !loadExtensions,
     // Web sessions load ONLY the pi-web-access extension — its tools come
@@ -162,6 +182,14 @@ async function handleTutorRequest(req, res, url) {
       json(res, 400, { error: `Unknown model: ${payload.model}` })
       return
     }
+    if (payload.tutorNotes !== undefined && (typeof payload.tutorNotes !== 'string' || payload.tutorNotes.length > 4000)) {
+      json(res, 400, { error: 'tutorNotes must be a string of at most 4000 characters' })
+      return
+    }
+    const threadNotes = payload.tutorNotes ?? ''
+    // Global notes apply to every request; fetch once here, keep failures silent (tutor still runs).
+    let globalNotes = ''
+    try { globalNotes = (await tutorNotes.read()).global } catch { globalNotes = '' }
 
     // Fold prior turns into one composed prompt (fresh in-memory session per request).
     const transcript = messages
@@ -175,7 +203,7 @@ async function handleTutorRequest(req, res, url) {
 
     let session = null
     try {
-      session = await makeSession(modelRef, { webAccess: WEB_ACCESS })
+      session = await makeSession(modelRef, { webAccess: WEB_ACCESS, notes: tutorNotesPrompt(globalNotes, threadNotes) })
     } catch (e) {
       json(res, 500, { error: String(e?.message ?? e) })
       return
@@ -232,7 +260,7 @@ async function handleTutorRequest(req, res, url) {
 
   json(res, 404, { error: 'not found' })
 }
-const server = createBridgeServer({ library, port: PORT, origins: ORIGINS, fallback: handleTutorRequest })
+const server = createBridgeServer({ library, tutorNotes, port: PORT, origins: ORIGINS, fallback: handleTutorRequest })
 
 /**
  * Startup warmup: create and dispose one extension-loading session so that

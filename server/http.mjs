@@ -1,5 +1,6 @@
 import http from 'node:http'
 import { LibraryError, MAX_DOCUMENT_BYTES, ThreadLibrary, checkId } from './library.mjs'
+import { validateNotes } from './tutorNotes.mjs'
 
 export const MAX_REQUEST_BYTES = MAX_DOCUMENT_BYTES + 64 * 1024
 const loopbackHosts = new Set(['localhost', '127.0.0.1', '[::1]'])
@@ -98,7 +99,15 @@ async function libraryRoute(req, res, url, library) {
   } else throw new LibraryError('method-not-allowed', 'Unknown operation or method not allowed', 405)
   return true
 }
-export function createBridgeServer({ library = new ThreadLibrary(), port = 5178, origins = trustedOrigins(port), fallback } = {}) {
+export function createBridgeServer({ library = new ThreadLibrary(), tutorNotes = null, port = 5178, origins = trustedOrigins(port), fallback } = {}) {
+  async function notesRoute(req, res, url) {
+    if (url.pathname !== '/api/tutor-notes') return false
+    if (url.search) throw new LibraryError('invalid-request', 'Tutor-notes endpoint does not accept query parameters')
+    if (req.method === 'GET') json(res, 200, await tutorNotes.read())
+    else if (req.method === 'PUT') json(res, 200, await tutorNotes.save(validateNotes(await readJson(req))))
+    else throw new LibraryError('method-not-allowed', 'Method not allowed', 405)
+    return true
+  }
   const server = http.createServer((req, res) => {
     void (async () => {
       try {
@@ -111,6 +120,7 @@ export function createBridgeServer({ library = new ThreadLibrary(), port = 5178,
           throw new LibraryError('invalid-request', 'Paths and traversal are not allowed')
         }
         const url = new URL(req.url, `http://localhost:${port}`)
+        if (tutorNotes && await notesRoute(req, res, url)) return
         if (await libraryRoute(req, res, url, library)) return
         if (fallback) await fallback(req, res, url)
         else json(res, 404, { error: 'not found', code: 'not-found' })
