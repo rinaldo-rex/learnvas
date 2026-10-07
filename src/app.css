@@ -641,6 +641,71 @@ button.help-button {
   }
 }
 
+/* ---------- tutor notes (global + per-thread) ---------- */
+.top-right-panel,
+.react-flow__panel.top-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+.notes-toggle {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 5px 12px;
+  font-size: 12px;
+}
+.notes-toggle[aria-expanded='true'] {
+  font-weight: 600;
+}
+.notes-panel {
+  position: relative;
+}
+.notes-body {
+  width: min(420px, calc(100vw - 32px));
+  margin-top: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 4px 14px var(--shadow-soft);
+  padding: 10px 12px 12px;
+  font-size: 12px;
+  user-select: text;
+}
+.notes-entry {
+  border-top: 1px solid var(--entry-border);
+  padding: 7px 0;
+}
+.notes-entry > summary {
+  cursor: pointer;
+  font-weight: 600;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  list-style: revert;
+}
+.notes-entry > summary .hint {
+  font-weight: 400;
+}
+.notes-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 72px;
+  font: inherit;
+  color: var(--text);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  line-height: 1.45;
+}
+.notes-textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 /* ---------- hover-to-continue buttons ---------- */
 .node-plus {
   position: absolute;

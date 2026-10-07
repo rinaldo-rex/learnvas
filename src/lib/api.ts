@@ -56,6 +56,9 @@ export async function fetchExtensions(signal?: AbortSignal): Promise<ExtensionIn
 
 export interface TutorNotes { global: string; updatedAt: string | null }
 
+/** Appended prompt text must stay small and deterministic (cache-friendly). */
+export const MAX_TUTOR_NOTES = 4000
+
 export async function fetchTutorNotes(signal?: AbortSignal): Promise<TutorNotes> {
   const res = await fetch('/api/tutor-notes', { signal })
   if (!res.ok) throw new Error(`Tutor notes unavailable (HTTP ${res.status})`)

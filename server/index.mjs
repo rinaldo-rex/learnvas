@@ -12,7 +12,7 @@
 //   - the caller's requested model (or pi's default)
 import { createBridgeServer, json, readJson, trustedOrigins } from './http.mjs'
 import { ThreadLibrary } from './library.mjs'
-import { TutorNotesStore } from './tutorNotes.mjs'
+import { TutorNotesStore, MAX_NOTES_CHARS } from './tutorNotes.mjs'
 import {
   createAgentSession,
   ModelRuntime,
@@ -182,8 +182,8 @@ async function handleTutorRequest(req, res, url) {
       json(res, 400, { error: `Unknown model: ${payload.model}` })
       return
     }
-    if (payload.tutorNotes !== undefined && (typeof payload.tutorNotes !== 'string' || payload.tutorNotes.length > 4000)) {
-      json(res, 400, { error: 'tutorNotes must be a string of at most 4000 characters' })
+    if (payload.tutorNotes !== undefined && (typeof payload.tutorNotes !== 'string' || payload.tutorNotes.length > MAX_NOTES_CHARS)) {
+      json(res, 400, { error: `tutorNotes must be a string of at most ${MAX_NOTES_CHARS} characters` })
       return
     }
     const threadNotes = payload.tutorNotes ?? ''

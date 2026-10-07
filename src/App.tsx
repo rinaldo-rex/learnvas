@@ -25,6 +25,7 @@ import { threadApi, type ThreadRecord } from './lib/threadApi'
 import { LAST_THREAD_KEY, ThreadWorkspace } from './lib/threadWorkspace'
 import { StreamOwner } from './lib/streamOwner'
 import { ThreadPanel } from './components/ThreadPanel'
+import { TutorNotesPanel } from './components/TutorNotesPanel'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
 import { parseThemePreference } from './lib/theme'
 import { useTheme } from './lib/useTheme'
@@ -185,6 +186,17 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       saveTutorNotes(text).catch(() => {}) // re-validated upstream; store keeps last good value
     }, 500) as unknown as number
   }, [])
+
+  /** Thread notes ride the document's ThreadMetadata through the workspace's ordinary autosave. */
+  const setThreadNotes = useCallback((notes: string) => {
+    const current = metadataRef.current
+    // Omit the key entirely when empty: the schema treats presence-with-empty
+    // as invalid, and validateDocument rejects it during the workspace save.
+    metadataRef.current = notes
+      ? { ...current, tutorNotes: notes }
+      : (() => { const { tutorNotes: _drop, ...rest } = current; return rest })()
+    workspace.changed()
+  }, [workspace])
 
   /* ---------- node helpers ---------- */
   const patchNode = useCallback(
@@ -658,6 +670,14 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
           </Panel>
           <Panel position="top-right" style={zen ? { display: 'none' } : undefined}>
             <HelpButton onOpen={openHelp} />
+            <TutorNotesPanel
+              workspace={workspace}
+              threadId={record.document.threadId}
+              globalNotes={globalNotes}
+              setGlobalNotes={setGlobalNotesPersisted}
+              threadNotes={record.document.tutorNotes ?? ''}
+              onThreadNotes={setThreadNotes}
+            />
           </Panel>
         </ReactFlow>
       </div>
