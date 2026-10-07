@@ -1,4 +1,4 @@
-import { createThreadMetadata, validateDocument, type LearnDocument } from './learnDocument.ts'
+import { createThreadMetadata, LEARN_VERSION, validateDocument, type LearnDocument } from './learnDocument.ts'
 import { ThreadApiError, type ThreadApi, type ThreadList, type ThreadRecord } from './threadApi.ts'
 import { portableExport, validatePortableDocument } from './portableDocument.ts'
 
@@ -141,7 +141,7 @@ export class ThreadWorkspace {
   create(title: string) { return this.run(async () => {
     await this.saveOutgoing()
     const metadata = createThreadMetadata(title.trim())
-    const document = validateDocument({ ...metadata, format: 'learnvas', version: 1, cards: [{ id: crypto.randomUUID(), kind: 'prompt', position: { x: 100, y: 140 }, text: '', collapsed: false, sent: false }], connections: [], viewport: { x: 0, y: 0, zoom: 1 } })
+    const document = validateDocument({ ...metadata, format: 'learnvas', version: LEARN_VERSION, cards: [{ id: crypto.randomUUID(), kind: 'prompt', position: { x: 100, y: 140 }, text: '', collapsed: false, sent: false }], connections: [], viewport: { x: 0, y: 0, zoom: 1 } })
     const record = await this.confirmed(filename => this.api.create(document, filename))
     if (!record) return
     this.activate(record)

@@ -2,7 +2,8 @@ import type { LVEdge, LVNode } from '../types'
 import { SOURCE_HANDLES, TARGET_HANDLES } from './ports.ts'
 
 export const LEARN_FORMAT = 'learnvas' as const
-export const LEARN_VERSION = 1 as const
+// v2 adds per-thread tutorNotes; v1 is unsupported (early-stage format, no users, no migration).
+export const LEARN_VERSION = 2 as const
 export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 
 /** Canonical fields only: none of these types depend on React Flow. */
@@ -220,6 +221,7 @@ export function validateDocument(value: unknown): LearnDocument {
   const d = object(value, 'document')
   if (d.format !== LEARN_FORMAT) throw new LearnDocumentError('invalid-format', 'document.format', `expected "${LEARN_FORMAT}"`)
   if (!Number.isInteger(d.version) || (d.version as number) < 1) invalid('document.version', 'expected a positive integer schema version')
+  if (d.version === 1) throw new LearnDocumentError('unsupported-version', 'document.version', 'schema version 1 is no longer supported; re-create the thread under the current format')
   if (d.version !== LEARN_VERSION) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: ${LEARN_VERSION}`)
   // Future versions must dispatch here to their own validators and explicit migrations.
   fields(d, ['format', 'version', 'threadId', 'title', 'createdAt', 'updatedAt', 'cards', 'connections', 'viewport'], 'document')

@@ -178,6 +178,7 @@ test('malformed, future-version, oversized, duplicate-ID and non-document files 
   const files = {
     'Broken.learn': '{bad',
     'Future.learn': JSON.stringify(document('Future', { version: 99 })),
+    'Retired.learn': JSON.stringify(document('Retired', { version: 1 })),
     'Unknown.learn': JSON.stringify(document('Unknown', { extra: true })),
     'Empty.learn': '',
   }
@@ -187,7 +188,7 @@ test('malformed, future-version, oversized, duplicate-ID and non-document files 
   await fs.mkdir(path.join(directory, 'Directory.learn'))
   let listing = await library.list()
   assert.equal(listing.threads.length, 1)
-  assert.equal(listing.warnings.length, 6)
+  assert.equal(listing.warnings.length, 7)
   assert.ok(listing.warnings.some(w => w.code === 'unsupported-version'))
   assert.ok(listing.warnings.some(w => w.code === 'document-too-large'))
   for (const [name, bytes] of Object.entries(files)) assert.equal(await fs.readFile(path.join(directory, name), 'utf8'), bytes)
@@ -206,7 +207,8 @@ test('API validates envelopes/documents, size bounds, UTF-8, traversal, and unkn
     ['/api/threads', 'POST', [], 400, 'invalid-request'],
     ['/api/threads', 'POST', {}, 400, 'invalid-request'],
     ['/api/threads', 'POST', { document: document(), path: '/tmp/escape.learn' }, 400, 'invalid-request'],
-    ['/api/threads', 'POST', { document: document('Bad', { version: 2 }) }, 422, 'unsupported-version'],
+    ['/api/threads', 'POST', { document: document('Bad', { version: 3 }) }, 422, 'unsupported-version'],
+    ['/api/threads', 'POST', { document: document('Bad', { version: 1 }) }, 422, 'unsupported-version'],
     ['/api/threads', 'POST', { document: document('Bad', { extra: 1 }) }, 422, 'invalid-document'],
     ['/api/threads', 'POST', { document: document('', {}) }, 422, 'invalid-document'],
     ['/api/threads', 'POST', { document: document('Bad', { threadId: '../escape' }) }, 400, 'invalid-id'],

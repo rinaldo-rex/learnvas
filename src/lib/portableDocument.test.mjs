@@ -33,7 +33,7 @@ async function setup(t, confirmation = () => true, id = 'active') {
 test('portable parsing rejects malformed JSON, marker, versions, unknown fields and active statuses', () => {
   for (const [input, code] of [
     ['{oops', 'invalid-json'], [{ ...fixture, format: 'other' }, 'invalid-format'],
-    [{ ...fixture, version: 99 }, 'unsupported-version'], [{ ...fixture, credentials: 'secret' }, 'invalid-document'],
+    [{ ...fixture, version: 99 }, 'unsupported-version'], [{ ...fixture, version: 1 }, 'unsupported-version'], [{ ...fixture, credentials: 'secret' }, 'invalid-document'],
     [{ ...fixture, cards: fixture.cards.map(c => c.kind === 'response' ? { ...c, status: 'streaming' } : c) }, 'invalid-document'],
   ]) assert.throws(() => parsePortableDocument(bytes(input)), error => error.code === code)
   assert.throws(() => parsePortableDocument(new Uint8Array([255])), /UTF-8/)
