@@ -22,4 +22,5 @@ learn:
     BRIDGE_PID=$!
     cleanup() { kill "$BRIDGE_PID" 2>/dev/null || true; }
     trap cleanup EXIT INT TERM
-    pnpm exec vite --open
+    # Use IPv4 explicitly: localhost may resolve to another app on IPv6 ::1.
+    pnpm exec vite --host 127.0.0.1 --port 5173 --strictPort --open http://127.0.0.1:5173
