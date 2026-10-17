@@ -19,6 +19,9 @@ export interface AppActions {
   resizeNode(id: string, width: number, height: number): void
   stopStream(responseId: string): void
   newPrompt(): void
+  selectionMode: boolean
+  selectedNodeIds: string[]
+  toggleNodeSelection(id: string): void
   models: ModelInfo[]
   selectedModel: string
   setSelectedModel(id: string): void

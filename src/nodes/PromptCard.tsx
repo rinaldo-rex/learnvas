@@ -1,6 +1,7 @@
 import { useEffect, useRef, type MouseEvent as RMouseEvent } from 'react'
 import type { NodeProps } from '@xyflow/react'
 import { NodePorts } from '../components/NodePorts'
+import { SelectableCard } from '../components/SelectableCard'
 import { useApp } from '../actions'
 import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
@@ -42,14 +43,14 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
   const collapsed = data.collapsed && data.sent
 
   return (
-    <div className="card prompt">
+    <SelectableCard id={id} label={`prompt card: ${oneLine(data.text) || 'Empty prompt'}`} className="card prompt">
       <NodePorts id={id} />
 
       <div
         className="card-head"
         onClick={() => data.sent && updatePrompt(id, { collapsed: !data.collapsed })}
       >
-        <span className="tag you">You</span>
+        <span className="tag you">{data.mergeContext ? 'Merge' : 'You'}</span>
         {collapsed && <span className="head-label">{oneLine(data.text)}</span>}
         <span className="spacer" />
         <button
@@ -64,6 +65,19 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
         </button>
       </div>
 
+      {data.mergeContext && <div className="merge-context nodrag nopan" onClick={event => event.stopPropagation()}>
+        {data.sent ? <span className="merge-context-badge">
+          {data.mergeContext === 'selected' ? 'Selected cards only' : 'Cards + histories'}
+        </span> : <fieldset>
+          <legend>Include</legend>
+          <div className="merge-context-options">
+            <button type="button" aria-pressed={data.mergeContext === 'selected'} onClick={() => updatePrompt(id, { mergeContext: 'selected' })}>Selected cards only</button>
+            <button type="button" aria-pressed={data.mergeContext === 'histories'} onClick={() => updatePrompt(id, { mergeContext: 'histories' })}>Cards + histories</button>
+          </div>
+          <p>{data.mergeContext === 'selected' ? 'Only source-card text; earlier discussion stays out.' : 'Includes earlier discussion; shared history appears once.'}</p>
+        </fieldset>}
+      </div>}
+
       {!collapsed && (
         <>
           {data.quote && (
@@ -75,7 +89,7 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
             ref={ref}
             className={`prompt-input nodrag nopan ${inputScrolls ? 'nowheel' : ''}`}
             value={data.text}
-            placeholder={data.quote ? 'Can you elaborate more on this?' : 'What do you want to understand?'}
+            placeholder={data.mergeContext ? 'What should we merge? e.g. Only the criticism about X and Y…' : data.quote ? 'Can you elaborate more on this?' : 'What do you want to understand?'}
             onChange={(e) => updatePrompt(id, { text: e.target.value })}
             onMouseUp={onInputMouseUp}
             onKeyDown={(e) => {
@@ -103,6 +117,6 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
           </div>
         </>
       )}
-    </div>
+    </SelectableCard>
   )
 }

@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useReactFlow, type NodeProps } from '@xyflow/react'
 import { NodePorts } from '../components/NodePorts'
+import { SelectableCard } from '../components/SelectableCard'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkBreaks from 'remark-breaks'
@@ -110,8 +111,10 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
   const streaming = data.status === 'streaming'
 
   return (
-    <div
-      ref={cardRef}
+    <SelectableCard
+      id={id}
+      label={`response card: ${data.text.replace(/\s+/g, ' ').slice(0, 60) || 'Empty response'}`}
+      cardRef={cardRef}
       className={`card response ${data.height ? 'tall' : ''}`}
     >
       <NodePorts id={id} />
@@ -178,6 +181,6 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
           onPointerCancel={onGripUp}
         />
       )}
-    </div>
+    </SelectableCard>
   )
 }

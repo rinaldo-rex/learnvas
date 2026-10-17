@@ -21,6 +21,7 @@ import { HelpButton, HelpDialog } from './components/HelpButton'
 import { fetchModels, fetchTutorNotes, saveTutorNotes, streamChat, type ModelInfo } from './lib/api'
 import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
 import { buildConversation } from './lib/conversation'
+import { createMergeDraft } from './lib/mergeDraft'
 import { canvasToDocument, documentToCanvas } from './lib/learnDocument'
 import { threadApi, type ThreadRecord } from './lib/threadApi'
 import { LAST_THREAD_KEY, ThreadWorkspace } from './lib/threadWorkspace'
@@ -87,6 +88,8 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   const [selectedModel, setSelectedModel] = useState('') // '' = pi default
   const [zen, setZen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
   const hoveredNodeRef = useRef<string | null>(null)
   const deletionHistory = useRef<CanvasGraph[]>([])
   const helpFocusRef = useRef<HTMLElement | null>(null)
@@ -222,6 +225,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       if (deletionHistory.current.length > 50) deletionHistory.current.shift()
       const doomed = new Set(deleted.nodes.map((node) => node.id))
       const doomedEdges = new Set(deleted.edges.map((edge) => edge.id))
+      setSelectedNodeIds(ids => ids.filter(id => !doomed.has(id)))
       if (hoveredNodeRef.current && doomed.has(hoveredNodeRef.current)) hoveredNodeRef.current = null
       for (const d of doomed) {
         aborts.current.get(d)?.cancel()
@@ -244,9 +248,34 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     setEdges((es) => restoreDeletion({ nodes: restored.nodes, edges: es }, deleted).edges)
   }, [setNodes, setEdges])
 
+  const cancelSelection = useCallback(() => {
+    setSelectionMode(false)
+    setSelectedNodeIds([])
+  }, [])
+  const toggleSelectionMode = useCallback(() => {
+    window.getSelection()?.removeAllRanges()
+    setSelectionMode(value => !value)
+    setSelectedNodeIds([])
+  }, [])
+  const toggleNodeSelection = useCallback((id: string) => {
+    setSelectedNodeIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : [...ids, id])
+  }, [])
+  const mergeSelection = useCallback(() => {
+    if (!selectionMode) return
+    const draft = createMergeDraft(nodesRef.current, selectedNodeIds)
+    if (!draft) return
+    setNodes(ns => [...ns, draft.node])
+    setEdges(es => [...es, ...draft.edges])
+    cancelSelection()
+    void setCenter(draft.node.position.x + 140, draft.node.position.y + 130, { zoom: getZoom(), duration: 200 })
+  }, [selectionMode, selectedNodeIds, setNodes, setEdges, cancelSelection, getZoom, setCenter])
+
   /* ---------- canvas shortcuts ---------- */
   useEffect(() => {
     const unsubscribe = tinykeys(window, {
+      s: event => { event.preventDefault(); toggleSelectionMode() },
+      m: event => { if (selectionMode) { event.preventDefault(); mergeSelection() } },
+      Escape: event => { if (selectionMode) { event.preventDefault(); cancelSelection() } },
       x: (event) => {
         const id = hoveredNodeRef.current
         if (!id) return
@@ -277,7 +306,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       unsubscribe()
       window.removeEventListener('blur', clearHover)
     }
-  }, [openHelp, removeNode, undoDeletion])
+  }, [openHelp, removeNode, undoDeletion, toggleSelectionMode, selectionMode, mergeSelection, cancelSelection])
 
   const addPromptNode = useCallback(
     (position: XYPosition, focus = false, quote?: string) => {
@@ -296,9 +325,10 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   )
 
   const newPrompt = useCallback(() => {
+    cancelSelection()
     const p = screenToFlowPosition({ x: window.innerWidth / 2 - 140, y: window.innerHeight / 2 - 60 })
     addPromptNode(p, true)
-  }, [screenToFlowPosition, addPromptNode])
+  }, [screenToFlowPosition, addPromptNode, cancelSelection])
 
   /* ---------- conversation graph ---------- */
 
@@ -534,13 +564,16 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       resizeNode,
       stopStream,
       newPrompt,
+      selectionMode,
+      selectedNodeIds,
+      toggleNodeSelection,
       models,
       selectedModel,
       setSelectedModel,
       globalNotes,
       setGlobalNotes: setGlobalNotesPersisted,
     }),
-    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, models, selectedModel, globalNotes, setGlobalNotesPersisted],
+    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, selectionMode, selectedNodeIds, toggleNodeSelection, models, selectedModel, globalNotes, setGlobalNotesPersisted],
   )
 
   return (
@@ -558,6 +591,10 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
             if (hoveredNodeRef.current === node.id) hoveredNodeRef.current = null
           }}
           nodesConnectable={false}
+          nodesDraggable={!selectionMode}
+          elementsSelectable={false}
+          selectionKeyCode={null}
+          multiSelectionKeyCode={null}
           deleteKeyCode={null}
           defaultViewport={saved.viewport}
           onInit={instance => { void instance.setViewport(saved.viewport) }}
@@ -566,6 +603,11 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
           maxZoom={saved ? Math.max(2, saved.viewport.zoom) : 2}
         >
           <Background variant={BackgroundVariant.Dots} gap={22} size={1.4} />
+          {selectionMode && <Panel position="bottom-center" className="merge-selection-bar nodrag nopan">
+            <span role="status">{selectedNodeIds.length} selected · Click cards to toggle</span>
+            <button type="button" className="primary" disabled={selectedNodeIds.length < 2} onClick={mergeSelection}>Merge (M)</button>
+            <button type="button" className="ghost" onClick={cancelSelection}>Cancel (Esc)</button>
+          </Panel>}
           <Controls showInteractive={false} style={zen ? { display: 'none' } : undefined} />
           <MiniMap pannable zoomable style={zen ? { display: 'none' } : undefined} />
           <Panel position="top-left" className="canvas-controls" style={zen ? { display: 'none' } : undefined}>
@@ -575,6 +617,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
               <button className="primary" onClick={newPrompt}>
                 ＋ New prompt
               </button>
+              <button type="button" className="ghost" aria-pressed={selectionMode} onClick={toggleSelectionMode}>Select cards (S)</button>
               <select
                 value={selectedProvider}
                 onChange={(e) => pickProvider(e.target.value)}
@@ -618,6 +661,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
                 onClick={() => {
                   if (confirm('Clear this thread’s canvas?')) {
                     deletionHistory.current = []
+                    cancelSelection()
                     hoveredNodeRef.current = null
                     for (const [id, job] of aborts.current) {
                       job.cancel()
