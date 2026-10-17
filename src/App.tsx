@@ -20,6 +20,7 @@ import { ExtensionsPanel } from './components/ExtensionsPanel'
 import { HelpButton, HelpDialog } from './components/HelpButton'
 import { fetchModels, fetchTutorNotes, saveTutorNotes, streamChat, type ModelInfo } from './lib/api'
 import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
+import { buildConversation } from './lib/conversation'
 import { canvasToDocument, documentToCanvas } from './lib/learnDocument'
 import { threadApi, type ThreadRecord } from './lib/threadApi'
 import { LAST_THREAD_KEY, ThreadWorkspace } from './lib/threadWorkspace'
@@ -301,35 +302,8 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
 
   /* ---------- conversation graph ---------- */
 
-  /** Walk from a prompt card up to the root, collecting [user, assistant] pairs.
-   *  Parent edges are either response→prompt (branched from an answer) or
-   *  prompt→prompt (branched from a quoted part of a prompt). */
-  const buildChain = useCallback((promptId: string): ChatMsg[] => {
-    const byId = new Map(nodesRef.current.map((n) => [n.id, n]))
-    const es = edgesRef.current
-    const msgs: ChatMsg[] = []
-    let cur: string | undefined = promptId
-    let guard = 0
-    while (cur && guard++ < 1000) {
-      const node = byId.get(cur)
-      if (!node) break
-      if (node.type === 'prompt') {
-        const d = node.data
-        const userContent =
-          (d.quote ? `Regarding this excerpt from the previous message:\n"${d.quote}"\n\n` : '') +
-          (d.text.trim() || '(empty question)')
-        msgs.push({ role: 'user', content: userContent })
-        const inEdge = es.find((e) => e.target === node.id)
-        const src = inEdge ? byId.get(inEdge.source) : undefined
-        cur = src?.type === 'response' || src?.type === 'prompt' ? src.id : undefined
-      } else {
-        const d = (node as ResponseNode).data
-        msgs.push({ role: 'assistant', content: d.text || '(no answer recorded)' })
-        cur = d.sourcePromptId
-      }
-    }
-    return msgs.reverse()
-  }, [])
+  const buildChain = useCallback((promptId: string): ChatMsg[] =>
+    buildConversation(nodesRef.current, edgesRef.current, promptId), [])
 
   /** Create the response card for a prompt and stream into it. */
   const startResponse = useCallback(

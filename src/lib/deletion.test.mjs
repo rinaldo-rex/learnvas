@@ -91,6 +91,45 @@ test('restore avoids duplicates and dangling edges', () => {
   assert.deepEqual(restored.edges.map((edge) => edge.id), ['answer-child'])
 })
 
+test('deleting one source preserves shared merges and descendants; undo restores source edges', () => {
+  const source = {
+    nodes: [prompt('a'), prompt('b'), prompt('merge', { mergeContext: 'selected' }), prompt('follow-up')],
+    edges: [edge('a', 'merge'), edge('b', 'merge'), edge('merge', 'follow-up')],
+  }
+  const deleted = captureDeletion(source, 'a')
+  assert.deepEqual(deleted.nodes.map(n => n.id), ['a'])
+  assert.deepEqual(deleted.edges.map(e => e.id), ['a-merge'])
+  const current = without(source, deleted)
+  current.nodes.find(n => n.id === 'merge').data.text = 'New merge instructions'
+  const restored = restoreDeletion(current, deleted)
+  assert.equal(restored.nodes.find(n => n.id === 'merge').data.text, 'New merge instructions')
+  assert.deepEqual(restored.edges.map(e => e.id).sort(), source.edges.map(e => e.id).sort())
+  // Removing the last source removes the now-unowned merge and its descendants.
+  assert.deepEqual(captureDeletion(current, 'b').nodes.map(n => n.id), ['b', 'merge', 'follow-up'])
+  // Explicitly deleting the merge still removes its downstream branch.
+  assert.deepEqual(captureDeletion(source, 'merge').nodes.map(n => n.id), ['merge', 'follow-up'])
+})
+
+test('deleting a common root removes merges when all their sources are deleted', () => {
+  const source = {
+    nodes: [prompt('root'), prompt('a'), prompt('b'), prompt('merge', { mergeContext: 'histories' })],
+    edges: [edge('root', 'a'), edge('root', 'b'), edge('a', 'merge'), edge('b', 'merge')],
+  }
+  assert.equal(captureDeletion(source, 'root').nodes.length, 4)
+})
+
+test('consecutive deletions of merge sources undo in reverse without dangling edges', () => {
+  const source = { nodes: [prompt('a'), prompt('b'), prompt('merge', { mergeContext: 'histories' })], edges: [edge('a', 'merge'), edge('b', 'merge')] }
+  const first = captureDeletion(source, 'a')
+  let current = without(source, first)
+  const second = captureDeletion(current, 'b')
+  current = without(current, second)
+  assert.equal(current.nodes.length, 0)
+  current = restoreDeletion(restoreDeletion(current, second), first)
+  assert.deepEqual(current.nodes.map(n => n.id).sort(), ['a', 'b', 'merge'])
+  assert.deepEqual(current.edges.map(e => e.id).sort(), ['a-merge', 'b-merge'])
+})
+
 test('consecutive nested deletions restore in reverse order with all connections', () => {
   let current = graph()
   const history = []

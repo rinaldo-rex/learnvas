@@ -9,17 +9,32 @@ export interface CanvasGraph {
 /** Capture only the deleted branch and its incident edges, not the whole canvas. */
 export function captureDeletion(graph: CanvasGraph, rootId: string): CanvasGraph | null {
   if (!graph.nodes.some((node) => node.id === rootId)) return null
-  const ids = new Set([rootId])
-  let grew = true
-  while (grew) {
-    grew = false
-    for (const edge of graph.edges) {
-      if (ids.has(edge.source) && !ids.has(edge.target)) {
-        ids.add(edge.target)
-        grew = true
-      }
+  const children = new Map<string, string[]>()
+  for (const edge of graph.edges) {
+    const outgoing = children.get(edge.source) ?? []
+    outgoing.push(edge.target)
+    children.set(edge.source, outgoing)
+  }
+  const reachable = new Set([rootId])
+  const queue = [rootId]
+  for (let i = 0; i < queue.length; i++) {
+    for (const child of children.get(queue[i]) ?? []) {
+      if (!reachable.has(child)) { reachable.add(child); queue.push(child) }
     }
   }
+  // A shared merge and its descendants survive while any incoming source lives
+  // outside this deletion. Explicitly deleting the merge itself still removes it.
+  const protectedIds = new Set<string>()
+  const protectedQueue = graph.edges.filter(edge =>
+    reachable.has(edge.target) && edge.target !== rootId && !reachable.has(edge.source),
+  ).map(edge => edge.target)
+  for (let i = 0; i < protectedQueue.length; i++) {
+    const id = protectedQueue[i]
+    if (id === rootId || protectedIds.has(id)) continue
+    protectedIds.add(id)
+    protectedQueue.push(...(children.get(id) ?? []))
+  }
+  const ids = new Set([...reachable].filter(id => !protectedIds.has(id)))
   return structuredClone({
     nodes: graph.nodes.filter((node) => ids.has(node.id)),
     edges: graph.edges.filter((edge) => ids.has(edge.source) || ids.has(edge.target)),
