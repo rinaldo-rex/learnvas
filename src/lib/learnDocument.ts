@@ -1,9 +1,11 @@
 import type { LVEdge, LVNode, MergeContext } from '../types'
 import { SOURCE_HANDLES, TARGET_HANDLES } from './ports.ts'
+import { isThinkingLevel, type RecordedThinking, type ThinkingLevel } from './thinking.ts'
 
 export const LEARN_FORMAT = 'learnvas' as const
-// v3 adds merge prompts. Strict v2 forests upgrade read-only; v1 remains retired.
-export const LEARN_VERSION = 3 as const
+// v4 adds thinking metadata and per-prompt selections. Strict v2/v3 reads
+// upgrade in memory only; v1 remains retired.
+export const LEARN_VERSION = 4 as const
 export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 
 /** Canonical fields only: none of these types depend on React Flow. */
@@ -37,11 +39,14 @@ export interface LearnPrompt extends CardBase {
   sent: boolean
   quote?: string
   mergeContext?: MergeContext
+  thinkingEfforts?: ThinkingLevel[]
 }
 
 export interface LearnResponse extends CardBase {
   kind: 'response'
   model: string
+  requestedThinking?: ThinkingLevel
+  thinking?: RecordedThinking
   status: 'done' | 'error' | 'stopped'
   sourcePromptId: string
 }
@@ -136,12 +141,19 @@ function array(value: unknown, path: string): unknown[] {
   return Array.from(value) // Treat sparse JS input as invalid elements, not silently skipped records.
 }
 
-function card(value: unknown, index: number, legacy: boolean): LearnCard {
+function thinkingLevel(value: unknown, path: string): ThinkingLevel {
+  if (!isThinkingLevel(value)) invalid(path, 'expected a supported thinking level')
+  return value
+}
+
+function card(value: unknown, index: number, version: number): LearnCard {
   const path = `document.cards[${index}]`
   const c = object(value, path)
   const common = ['id', 'kind', 'position', 'text', 'collapsed', 'width', 'height']
   if (c.kind !== 'prompt' && c.kind !== 'response') invalid(`${path}.kind`, 'expected prompt or response')
-  fields(c, [...common, ...(c.kind === 'prompt' ? ['sent', 'quote', ...(legacy ? [] : ['mergeContext'])] : ['model', 'status', 'sourcePromptId'])], path)
+  fields(c, [...common, ...(c.kind === 'prompt'
+    ? ['sent', 'quote', ...(version >= 3 ? ['mergeContext'] : []), ...(version >= 4 ? ['thinkingEfforts'] : [])]
+    : ['model', 'status', 'sourcePromptId', ...(version >= 4 ? ['requestedThinking', 'thinking'] : [])])], path)
   const base: CardBase = {
     id: text(c.id, `${path}.id`, true),
     position: position(c.position, `${path}.position`),
@@ -158,13 +170,20 @@ function card(value: unknown, index: number, legacy: boolean): LearnCard {
       if (Object.hasOwn(c, 'quote')) invalid(path, 'merge prompts cannot have a single-parent quote')
       prompt.mergeContext = c.mergeContext
     }
+    if (Object.hasOwn(c, 'thinkingEfforts')) {
+      prompt.thinkingEfforts = array(c.thinkingEfforts, `${path}.thinkingEfforts`).map((level, index) => thinkingLevel(level, `${path}.thinkingEfforts[${index}]`))
+      if (new Set(prompt.thinkingEfforts).size !== prompt.thinkingEfforts.length) invalid(`${path}.thinkingEfforts`, 'duplicate thinking efforts')
+    }
     return prompt
   }
   if (c.status !== 'done' && c.status !== 'error' && c.status !== 'stopped') invalid(`${path}.status`, 'expected done, error, or stopped (never an active request)')
-  return {
+  const response: LearnResponse = {
     ...base, kind: 'response', model: text(c.model, `${path}.model`, true),
     status: c.status, sourcePromptId: text(c.sourcePromptId, `${path}.sourcePromptId`, true),
   }
+  if (Object.hasOwn(c, 'requestedThinking')) response.requestedThinking = thinkingLevel(c.requestedThinking, `${path}.requestedThinking`)
+  if (Object.hasOwn(c, 'thinking')) response.thinking = c.thinking === 'unsupported' ? 'unsupported' : thinkingLevel(c.thinking, `${path}.thinking`)
+  return response
 }
 
 function connection(value: unknown, index: number): LearnConnection {
@@ -238,10 +257,10 @@ export function validateDocument(value: unknown): LearnDocument {
   if (d.format !== LEARN_FORMAT) throw new LearnDocumentError('invalid-format', 'document.format', `expected "${LEARN_FORMAT}"`)
   if (!Number.isInteger(d.version) || (d.version as number) < 1) invalid('document.version', 'expected a positive integer schema version')
   if (d.version === 1) throw new LearnDocumentError('unsupported-version', 'document.version', 'schema version 1 is no longer supported; re-create the thread under the current format')
-  if (d.version !== 2 && d.version !== LEARN_VERSION) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: 2, ${LEARN_VERSION}`)
-  // v2 is validated using its original card/forest rules before returning canonical v3.
-  // Reading never rewrites a library file; its next explicit save emits v3.
-  const legacy = d.version === 2
+  if (![2, 3, LEARN_VERSION].includes(d.version as number)) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: 2, 3, ${LEARN_VERSION}`)
+  // Each legacy version is validated with its original allowlist. Reading never
+  // rewrites a library file; next save emits v4 without invented old metadata.
+  const version = d.version as number
   fields(d, ['format', 'version', 'threadId', 'title', 'createdAt', 'updatedAt', 'tutorNotes', 'cards', 'connections', 'viewport'], 'document')
   const notes = Object.hasOwn(d, 'tutorNotes') ? text(d.tutorNotes, 'document.tutorNotes') : undefined
   if (notes !== undefined && !notes.trim()) invalid('document.tutorNotes', 'optional string fields must be omitted rather than empty')
@@ -251,7 +270,7 @@ export function validateDocument(value: unknown): LearnDocument {
     format: LEARN_FORMAT, version: LEARN_VERSION,
     threadId: text(d.threadId, 'document.threadId', true), title: text(d.title, 'document.title', true),
     createdAt: timestamp(d.createdAt, 'document.createdAt'), updatedAt: timestamp(d.updatedAt, 'document.updatedAt'),
-    cards: array(d.cards, 'document.cards').map((value, index) => card(value, index, legacy)),
+    cards: array(d.cards, 'document.cards').map((value, index) => card(value, index, version)),
     connections: array(d.connections, 'document.connections').map(connection),
     viewport: { x: number(v.x, 'document.viewport.x'), y: number(v.y, 'document.viewport.y'), zoom: number(v.zoom, 'document.viewport.zoom', true) },
   }
@@ -289,11 +308,14 @@ export function canvasToDocument(canvas: DocumentCanvas, metadata: ThreadMetadat
       const prompt: LearnPrompt = { ...base, kind: 'prompt', sent: node.data.sent }
       if (node.data.quote !== undefined) prompt.quote = node.data.quote
       if (node.data.mergeContext !== undefined) prompt.mergeContext = node.data.mergeContext
+      if (node.data.thinkingEfforts !== undefined) prompt.thinkingEfforts = [...node.data.thinkingEfforts]
       return prompt
     }
     if (node.type !== 'response') invalid('canvas.nodes', 'unknown node type')
     return {
       ...base, kind: 'response', model: node.data.model,
+      ...(node.data.requestedThinking !== undefined ? { requestedThinking: node.data.requestedThinking } : {}),
+      ...(node.data.thinking !== undefined ? { thinking: node.data.thinking } : {}),
       status: node.data.status === 'streaming' ? 'stopped' : node.data.status,
       sourcePromptId: node.data.sourcePromptId,
     }

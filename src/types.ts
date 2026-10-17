@@ -1,4 +1,5 @@
 import type { Edge, Node } from '@xyflow/react'
+import type { RecordedThinking, ThinkingLevel } from './lib/thinking'
 
 export type MergeContext = 'selected' | 'histories'
 
@@ -14,6 +15,8 @@ export interface PromptData extends Record<string, unknown> {
   quote?: string
   /** Incoming connections are merge sources; selected stops history at each source. */
   mergeContext?: MergeContext
+  /** Per-prompt choices for the next Ask/Re-run; empty disables submission. */
+  thinkingEfforts?: ThinkingLevel[]
   /** One-shot signal: autofocus the textarea when the node is created. */
   focus?: boolean
 }
@@ -23,6 +26,9 @@ export interface ResponseData extends Record<string, unknown> {
   text: string
   /** 'pi default' or 'provider/model-id' */
   model: string
+  /** Requested choice vs bridge-confirmed SDK session setting; omission means unknown. */
+  requestedThinking?: ThinkingLevel
+  thinking?: RecordedThinking
   status: 'streaming' | 'done' | 'error' | 'stopped'
   collapsed: boolean
   sourcePromptId: string

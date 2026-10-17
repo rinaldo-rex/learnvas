@@ -26,6 +26,8 @@ import { canvasToDocument, documentToCanvas } from './lib/learnDocument'
 import { threadApi, type ThreadRecord } from './lib/threadApi'
 import { LAST_THREAD_KEY, ThreadWorkspace } from './lib/threadWorkspace'
 import { StreamOwner } from './lib/streamOwner'
+import { comparisonSnapshot, responseOffset, type ComparisonSnapshot } from './lib/comparison'
+import { effortProblem, promptEfforts, type ThinkingLevel } from './lib/thinking'
 import { ThreadPanel } from './components/ThreadPanel'
 import { TutorNotesPanel } from './components/TutorNotesPanel'
 import { attachmentLayout, responseSide, SOURCE_HANDLES, type ContinuationPort } from './lib/ports'
@@ -83,8 +85,11 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   const [nodes, rawSetNodes] = useState<LVNode[]>(saved.nodes)
   const [edges, rawSetEdges] = useState<Edge[]>(saved.edges)
   const [models, setModels] = useState<ModelInfo[]>([])
+  const [defaultModel, setDefaultModel] = useState('')
+  const [modelLoadError, setModelLoadError] = useState<string | null>(null)
+  const [notesReady, setNotesReady] = useState(false)
+  const [notesLoadError, setNotesLoadError] = useState<string | null>(null)
   const [globalNotes, setGlobalNotes] = useState('') // server-backed; '' before first load
-  const notesLoaded = useRef(false)
   const [selectedModel, setSelectedModel] = useState('') // '' = pi default
   const [zen, setZen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
@@ -118,8 +123,6 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     edgesRef.current = typeof update === 'function' ? update(edgesRef.current) : update
     rawSetEdges(edgesRef.current)
   }, [])
-  const selectedModelRef = useRef(selectedModel)
-  selectedModelRef.current = selectedModel
   const aborts = useRef(new Map<string, { stop(): void; cancel(): void }>())
   useEffect(() => {
     alive.current = true
@@ -165,21 +168,29 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   }), [workspace, record.document.threadId, getViewport])
   useEffect(() => { workspace.changed() }, [workspace, nodes, edges, viewport])
 
-  /* ---------- model list ---------- */
+  /* ---------- generation settings ---------- */
+  const reloadModels = useCallback(() => fetchModels().then(inventory => {
+    setModels(inventory.models)
+    setDefaultModel(inventory.defaultModel ?? '')
+    setModelLoadError(null)
+  }).catch(error => setModelLoadError(error.message)), [])
+  const reloadNotes = useCallback(() => fetchTutorNotes().then(notes => {
+    setGlobalNotes(notes.global)
+    setNotesReady(true)
+    setNotesLoadError(null)
+  }).catch(error => setNotesLoadError(error.message)), [])
   useEffect(() => {
-    fetchModels().then(setModels).catch(() => {})
-    fetchTutorNotes().then(notes => { notesLoaded.current = true; setGlobalNotes(notes.global) }).catch(() => { notesLoaded.current = true })
-  }, [])
+    void reloadModels()
+    void reloadNotes()
+  }, [reloadModels, reloadNotes])
 
   // The bridge may restart (with a different extension-registered model set)
   // while this tab stays open — refetch when the user returns to the window.
   useEffect(() => {
-    const onFocus = () => {
-      fetchModels().then(setModels).catch(() => {})
-    }
+    const onFocus = () => { void reloadModels() }
     window.addEventListener('focus', onFocus)
     return () => window.removeEventListener('focus', onFocus)
-  }, [])
+  }, [reloadModels])
 
   /** Persist global notes (debounced); failures surface as a transient status, never a modal. */
   const saveTimer = useRef(0)
@@ -335,30 +346,27 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   const buildChain = useCallback((promptId: string): ChatMsg[] =>
     buildConversation(nodesRef.current, edgesRef.current, promptId), [])
 
-  /** Create the response card for a prompt and stream into it. */
+  /** Every sibling owns a separate stream; the submission snapshot is shared. */
   const startResponse = useCallback(
-    (prompt: PromptNode, messages: ChatMsg[]) => {
+    (prompt: PromptNode, snapshot: ComparisonSnapshot, thinking: ThinkingLevel) => {
       const promptId = prompt.id
       // Continue away from the parent instead of overlapping it when the
       // prompt was added to the left or above its source card.
       const incoming = edgesRef.current.find(e => e.target === promptId)
       const side = responseSide(incoming?.targetHandle)
-      const siblings = edgesRef.current.filter(e => e.source === promptId && e.sourceHandle === SOURCE_HANDLES[side]).length
-      const layout = attachmentLayout(
-        {
-          ...prompt.position,
-          width: prompt.measured?.width ?? 280,
-          height: prompt.measured?.height ?? 160,
-        },
-        side,
-        // A normal answer can grow to a 400px body plus header. Reserve that
-        // space above the prompt so upward-streaming answers don't cover it.
-        { width: 340, height: 440 },
-        siblings * 80,
-      )
+      const siblingIds = new Set(edgesRef.current.filter(e => e.source === promptId && e.sourceHandle === SOURCE_HANDLES[side]).map(edge => edge.target))
+      const siblings = nodesRef.current.filter(node => siblingIds.has(node.id)).map(node => ({
+        position: node.position,
+        width: Math.max(node.data.width ?? 0, node.measured?.width ?? 0, 340),
+        height: Math.max(node.data.height ?? 0, node.measured?.height ?? 0, 480),
+      }))
+      const anchor = { ...prompt.position, width: prompt.measured?.width ?? 280, height: prompt.measured?.height ?? 160 }
+      const child = { width: 340, height: 480 }
+      const base = attachmentLayout(anchor, side, child)
+      const layout = attachmentLayout(anchor, side, child, responseOffset(side, base.position, siblings))
 
       const respId = crypto.randomUUID()
-      const model = selectedModelRef.current
+      const model = snapshot.model
       const resp: ResponseNode = {
         id: respId,
         type: 'response',
@@ -367,7 +375,8 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
         data: {
           kind: 'response',
           text: '',
-          model: model || 'pi default',
+          model,
+          requestedThinking: thinking,
           status: 'streaming',
           collapsed: false,
           sourcePromptId: promptId,
@@ -438,9 +447,14 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       })
       streamChat({
         model,
-        messages,
-        threadNotes: record.document.tutorNotes ?? '',
+        thinking,
+        messages: snapshot.messages,
+        globalNotes: snapshot.globalNotes,
+        threadNotes: snapshot.threadNotes,
         signal: ac.signal,
+        onMetadata(metadata) {
+          if (ownsCanvas()) patchNode(respId, { model: metadata.model, thinking: metadata.thinking })
+        },
         onDelta(t) {
           if (!ownsCanvas()) return
           pending += t
@@ -458,18 +472,24 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
         },
       })
     },
-    [setEdges, setNodes, patchNode, record.document.tutorNotes],
+    [setEdges, setNodes, patchNode],
   )
 
   const sendPrompt = useCallback(
-    (promptId: string) => {
+    (promptId: string, initialEfforts?: ThinkingLevel[]) => {
       const prompt = nodesRef.current.find((n) => n.id === promptId)
-      if (!prompt || prompt.type !== 'prompt' || !prompt.data.text.trim()) return
-      const messages = buildChain(promptId)
-      patchNode(promptId, { sent: true, collapsed: true, focus: false })
-      startResponse(prompt, messages)
+      if (!prompt || prompt.type !== 'prompt' || !prompt.data.text.trim() || !notesReady || modelLoadError) return
+      const model = models.find(item => item.id === (selectedModel || defaultModel))
+      const efforts = promptEfforts(prompt.data.thinkingEfforts ?? initialEfforts, model)
+      if (!model || effortProblem(efforts, model)) return
+      const snapshot = comparisonSnapshot({
+        model, efforts, messages: buildChain(promptId), globalNotes,
+        threadNotes: metadataRef.current.tutorNotes ?? '',
+      })
+      patchNode(promptId, { sent: true, collapsed: true, focus: false, thinkingEfforts: [...snapshot.efforts] })
+      for (const thinking of snapshot.efforts) startResponse(prompt, snapshot, thinking)
     },
-    [buildChain, patchNode, startResponse],
+    [buildChain, patchNode, startResponse, models, selectedModel, defaultModel, notesReady, modelLoadError, globalNotes],
   )
 
   /** Both text selections and hover + buttons create real connected drafts.
@@ -568,12 +588,13 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       selectedNodeIds,
       toggleNodeSelection,
       models,
-      selectedModel,
+      selectedModel: selectedModel || defaultModel,
+      generationProblem: !notesReady ? (notesLoadError ?? 'Loading tutor notes…') : modelLoadError,
       setSelectedModel,
       globalNotes,
       setGlobalNotes: setGlobalNotesPersisted,
     }),
-    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, selectionMode, selectedNodeIds, toggleNodeSelection, models, selectedModel, globalNotes, setGlobalNotesPersisted],
+    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, selectionMode, selectedNodeIds, toggleNodeSelection, models, selectedModel, defaultModel, notesReady, notesLoadError, modelLoadError, globalNotes, setGlobalNotesPersisted],
   )
 
   return (
@@ -676,6 +697,10 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
                 Clear
               </button>
             </div>
+            {(modelLoadError || notesLoadError || !models.length) && <div className="generation-settings-notice" role="status">
+              {modelLoadError ?? notesLoadError ?? 'No models available. Configure a Pi provider, then reload.'}
+              <button type="button" className="ghost" onClick={() => { void reloadModels(); if (!notesReady) void reloadNotes() }}>Reload generation settings</button>
+            </div>}
             {persistence.error && <div role="alert" className="extension-error">{persistence.error}. Latest changes may not be saved. Open Threads to retry or save a recovery copy.</div>}
             <ExtensionsPanel />
           </Panel>

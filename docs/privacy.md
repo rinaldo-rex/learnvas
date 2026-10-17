@@ -4,7 +4,7 @@
 
 ## What is saved
 
-Named canvases autosave as [portable `.learn` v3 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, per-thread tutor notes, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport.
+Named canvases autosave as [portable `.learn` v4 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, per-thread tutor notes, text/quotes/model identifiers, prompt effort selections and recorded requested/effective SDK thinking settings, cards, connections, explicit sizes/collapse state, and viewport.
 
 Browser `localStorage` holds only convenience preferences: `learnvas:last-thread` and `learnvas:theme`. Clearing site data does not delete library files. Old `learnvas:document` and `learnvas:v1` canvases are ignored, without automatic migration or deletion. Invalid/unsupported library files are preserved and reported as warnings, never rewritten silently.
 

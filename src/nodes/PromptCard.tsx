@@ -1,10 +1,12 @@
-import { useEffect, useRef, type MouseEvent as RMouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent as RMouseEvent } from 'react'
 import type { NodeProps } from '@xyflow/react'
 import { NodePorts } from '../components/NodePorts'
 import { SelectableCard } from '../components/SelectableCard'
 import { useApp } from '../actions'
 import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
+import { ThinkingChoices } from '../components/ThinkingChoices'
+import { effortProblem, promptEfforts, type ThinkingLevel } from '../lib/thinking'
 
 const oneLine = (s: string, n = 46) => {
   const t = s.replace(/\s+/g, ' ').trim()
@@ -12,7 +14,19 @@ const oneLine = (s: string, n = 46) => {
 }
 
 export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
-  const { updatePrompt, sendPrompt, removeNode, branchPrompt } = useApp()
+  const { updatePrompt, sendPrompt, removeNode, branchPrompt, models, selectedModel, generationProblem } = useApp()
+  const model = models.find(item => item.id === selectedModel)
+  // Remember the first displayed default without patching/saving a legacy
+  // document just by opening it. Model changes must review incompatible
+  // defaults too, not silently swap them. Ask persists the chosen selection.
+  const [initialEfforts, setInitialEfforts] = useState<ThinkingLevel[] | null>(null)
+  useEffect(() => {
+    if (initialEfforts === null && model) setInitialEfforts([model.defaultThinking])
+  }, [initialEfforts, model])
+  const efforts = data.thinkingEfforts ?? initialEfforts ?? promptEfforts(undefined, model)
+  const problem = generationProblem ?? effortProblem(efforts, model)
+  const disabled = !data.text.trim() || !!problem
+  const countLabel = `${efforts.length} response${efforts.length === 1 ? '' : 's'}`
   const ref = useRef<HTMLTextAreaElement>(null)
   const quoteRef = useRef<HTMLDivElement>(null)
   const inputScrolls = useOverflowing(ref, [data.text])
@@ -95,22 +109,24 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
             onKeyDown={(e) => {
               if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && !e.nativeEvent.isComposing) {
                 e.preventDefault()
-                sendPrompt(id)
+                sendPrompt(id, efforts)
               }
             }}
           />
+          <ThinkingChoices model={model} value={efforts} onChange={thinkingEfforts => updatePrompt(id, { thinkingEfforts })} />
+          {problem && <p className="generation-problem nodrag nopan" role="status">{problem}</p>}
           <div className="card-foot">
             {data.sent ? (
-              <button className="primary" onClick={() => sendPrompt(id)}>
-                ↻ Re-run
+              <button className="primary" disabled={disabled} onClick={() => sendPrompt(id, efforts)}>
+                ↻ Re-run · {countLabel}
               </button>
             ) : (
               <button
                 className="primary"
-                disabled={!data.text.trim()}
-                onClick={() => sendPrompt(id)}
+                disabled={disabled}
+                onClick={() => sendPrompt(id, efforts)}
               >
-                Ask →
+                Ask · {countLabel} →
               </button>
             )}
             <span className="hint">⌘/Ctrl + ↵</span>

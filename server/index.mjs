@@ -1,6 +1,6 @@
 // Learnvas bridge — a tiny local server between the browser canvas and pi.
 //
-//   GET  /api/models     -> models pi has credentials for (the /model list)
+//   GET  /api/models     -> available models, supported efforts, resolved default
 //   GET  /api/extensions -> read-only loader inventory and tutor configuration
 //   POST /api/chat    -> SSE stream of text deltas for one tutoring exchange
 //   /api/threads, /api/trash -> revision-checked managed .learn library
@@ -10,14 +10,16 @@
 //   - a tutor system prompt (no coding-agent prompt, no AGENTS.md leakage)
 //   - only allowlisted web tools, when web access is enabled
 //   - the caller's requested model (or pi's default)
-import { createBridgeServer, json, readJson, trustedOrigins } from './http.mjs'
+import { createBridgeServer, json, trustedOrigins } from './http.mjs'
 import { ThreadLibrary } from './library.mjs'
-import { TutorNotesStore, MAX_NOTES_CHARS, tutorNotesPrompt } from './tutorNotes.mjs'
+import { TutorNotesStore } from './tutorNotes.mjs'
+import { createTutorHandler, tutorSettings } from './tutor.mjs'
 import { emptyExtensionReport, extensionLoadReport } from './extensions.mjs'
 import {
   createAgentSession,
   ModelRuntime,
   SessionManager,
+  SettingsManager,
   DefaultResourceLoader,
   getAgentDir,
 } from '@earendil-works/pi-coding-agent'
@@ -49,26 +51,23 @@ let tutorExtensions = null
 
 const modelRuntime = await ModelRuntime.create()
 
-function parseModelId(id) {
-  if (!id || id === 'default') return null
-  const i = id.indexOf('/')
-  return i > 0 ? { provider: id.slice(0, i), id: id.slice(i + 1) } : null
-}
+const tutorHandler = createTutorHandler({ modelRuntime, makeSession, tutorNotes, ready: () => warmupPromise, webAccess: WEB_ACCESS })
 
-async function makeSession(modelRef, { loadExtensions = false, webAccess = false, notes = '' } = {}) {
+async function makeSession(modelRef, { loadExtensions = false, webAccess = false, notes = '', thinkingLevel } = {}) {
+  const settingsManager = tutorSettings(SettingsManager.create(process.cwd(), getAgentDir()))
   const loader = new DefaultResourceLoader({
     cwd: process.cwd(),
     agentDir: getAgentDir(),
+    settingsManager,
     // Pure tutor: our prompt only — no AGENTS.md project context, no skills,
     // prompt templates, or themes. Extensions are only loaded once at startup
     // (see warmup below) so extension-registered providers/virtual models
     // (pi.registerProvider / pi.registerVirtualModel) land in the shared
     // ModelRuntime; per-request chat sessions skip them.
     systemPrompt: webAccess ? TUTOR_SYSTEM_WEB : TUTOR_SYSTEM,
-    // Student notes ride the SDK's native append mechanism. Passing this
-    // option also disables APPEND_SYSTEM.md discovery, so tutor isolation
-    // stays deterministic even if the user later creates one.
-    ...(notes ? { appendSystemPrompt: [notes] } : {}),
+    // Freeze the explicit note snapshot, even when empty; never discover a
+    // separate APPEND_SYSTEM.md between sibling comparison requests.
+    appendSystemPrompt: notes ? [notes] : [],
     noContextFiles: true,
     noExtensions: !loadExtensions,
     // Web sessions load ONLY the pi-web-access extension — its tools come
@@ -86,14 +85,18 @@ async function makeSession(modelRef, { loadExtensions = false, webAccess = false
   try {
     await loader.reload()
     recordExtensions()
+    const resolvedModel = modelRef ? modelRuntime.getModel(modelRef.provider, modelRef.id) : undefined
+    if (modelRef && !resolvedModel) throw new Error(`Model is no longer available: ${modelRef.provider}/${modelRef.id}`)
     const { session } = await createAgentSession({
       resourceLoader: loader,
       sessionManager: SessionManager.inMemory(),
       // Web sessions activate just the pi-web-access tools; everything else
       // (file tools, bash, …) stays off. Otherwise: fully toolless.
-      ...(webAccess ? { tools: WEB_TOOLS } : { noTools: true }),
+      ...(webAccess ? { tools: WEB_TOOLS } : { noTools: 'all' }),
       modelRuntime,
-      ...(modelRef ? { model: modelRuntime.getModel(modelRef.provider, modelRef.id) } : {}),
+      settingsManager,
+      ...(thinkingLevel !== undefined ? { thinkingLevel } : {}),
+      ...(resolvedModel ? { model: resolvedModel } : {}),
     })
     return session
   } catch (e) {
@@ -102,42 +105,7 @@ async function makeSession(modelRef, { loadExtensions = false, webAccess = false
   }
 }
 
-/** Pull a human-readable line out of provider error payloads. */
-function humanizeError(raw) {
-  const s = String(raw ?? '')
-  const body = s.replace(/^\d{3}\s*/, '') // strip leading status code like "400 "
-  try {
-    const parsed = JSON.parse(body)
-    const msg = parsed?.error?.message ?? parsed?.message ?? parsed?.error
-    if (typeof msg === 'string' && msg.trim()) return msg.trim().slice(0, 400)
-  } catch {
-    /* not json — fall through */
-  }
-  return s.slice(0, 400)
-}
-
-function sse(res, event, data) {
-  res.write(`data: ${JSON.stringify({ event, ...data })}\n\n`)
-}
-
 async function handleTutorRequest(req, res, url) {
-  if (req.method === 'GET' && url.pathname === '/api/models') {
-    void warmupPromise
-      .then(() => modelRuntime.getAvailable())
-      .then((available) => {
-        json(res, 200, {
-          models: available.map((m) => ({
-            id: `${m.provider}/${m.id}`,
-            provider: m.provider,
-            modelId: m.id,
-            name: m.name || m.id,
-          })),
-        })
-      })
-      .catch((e) => json(res, 200, { models: [], error: String(e?.message ?? e) }))
-    return
-  }
-
   if (req.method === 'GET' && url.pathname === '/api/extensions') {
     void warmupPromise.then(() => {
       json(res, 200, {
@@ -153,98 +121,7 @@ async function handleTutorRequest(req, res, url) {
     return
   }
 
-  if (req.method === 'POST' && url.pathname === '/api/chat') {
-    const payload = await readJson(req)
-    const messages = Array.isArray(payload?.messages) ? payload.messages : []
-    if (messages.length === 0) {
-      json(res, 400, { error: 'messages required' })
-      return
-    }
-
-    // Wait for extension registration before resolving models.
-    await warmupPromise
-    const modelRef = parseModelId(payload.model)
-    if (modelRef && !modelRuntime.getModel(modelRef.provider, modelRef.id)) {
-      json(res, 400, { error: `Unknown model: ${payload.model}` })
-      return
-    }
-    if (payload.tutorNotes !== undefined && (typeof payload.tutorNotes !== 'string' || payload.tutorNotes.length > MAX_NOTES_CHARS)) {
-      json(res, 400, { error: `tutorNotes must be a string of at most ${MAX_NOTES_CHARS} characters` })
-      return
-    }
-    const threadNotes = payload.tutorNotes ?? ''
-    // Global notes apply to every request; fetch once here, keep failures silent (tutor still runs).
-    let globalNotes = ''
-    try { globalNotes = (await tutorNotes.read()).global } catch { globalNotes = '' }
-
-    // Fold prior turns into one composed prompt (fresh in-memory session per request).
-    const transcript = messages
-      .slice(0, -1)
-      .map((m) => (m.role === 'user' ? '**Student:** ' : '**Assistant:** ') + m.content)
-      .join('\n\n---\n\n')
-    const question = messages[messages.length - 1]?.content ?? ''
-    const composed = transcript
-      ? `## Conversation so far\n\n${transcript}\n\n## The student now asks\n\n${question}`
-      : question
-
-    let session = null
-    try {
-      session = await makeSession(modelRef, { webAccess: WEB_ACCESS, notes: tutorNotesPrompt(globalNotes, threadNotes) })
-    } catch (e) {
-      json(res, 500, { error: String(e?.message ?? e) })
-      return
-    }
-
-    res.writeHead(200, {
-      'content-type': 'text/event-stream',
-      'cache-control': 'no-cache',
-      connection: 'keep-alive',
-    })
-
-    let closed = false
-    res.on('close', () => {
-      closed = true
-      try {
-        session?.abort()
-      } catch {}
-    })
-
-    try {
-      let errorMessage = null
-      const unsub = session.subscribe((ev) => {
-        if (ev.type === 'message_update' && ev.assistantMessageEvent?.type === 'text_delta' && !closed) {
-          sse(res, 'delta', { text: ev.assistantMessageEvent.delta })
-        } else if (ev.type === 'tool_execution_start' && !closed) {
-          sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'start' })
-        } else if (ev.type === 'tool_execution_end' && !closed) {
-          sse(res, 'tool', { name: ev.toolName ?? 'tool', phase: 'end' })
-        } else if (
-          ev.type === 'message_end' &&
-          ev.message?.role === 'assistant' &&
-          ev.message.stopReason === 'error'
-        ) {
-          errorMessage = humanizeError(ev.message.errorMessage ?? 'model error')
-        }
-      })
-      await session.prompt(composed)
-      unsub()
-      if (!closed) {
-        if (errorMessage) sse(res, 'error', { message: errorMessage })
-        else sse(res, 'done', {})
-      }
-      res.end()
-    } catch (e) {
-      if (!closed) sse(res, 'error', { message: String(e?.message ?? e) })
-      res.end()
-    } finally {
-      try {
-        session?.dispose()
-      } catch {}
-    }
-    return
-  }
-
-  json(res, 404, { error: 'not found' })
+  return tutorHandler(req, res, url)
 }
 const server = createBridgeServer({ library, tutorNotes, port: PORT, origins: ORIGINS, fallback: handleTutorRequest })
 

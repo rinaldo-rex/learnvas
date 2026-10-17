@@ -27,7 +27,7 @@ just learn
 
 Prefer no web tools? Skip the extension installation and run `LEARNVAS_WEB_ACCESS=0 just learn` instead.
 
-Open the URL printed by Vite, normally **http://localhost:5173**. Type a question and click **Ask →** or press **Ctrl/Cmd+Enter**. Click **?** at the top-right for in-app help.
+Open the URL printed by Vite, normally **http://localhost:5173**. Type a question, review its thinking-effort choices, and click **Ask** or press **Ctrl/Cmd+Enter**. Click **?** at the top-right for in-app help.
 
 > `just learn` attempts to terminate any process using port 5178 before starting the bridge. See [Getting started](docs/getting-started.md) for a two-terminal alternative and setup details.
 
@@ -39,7 +39,7 @@ Open the URL printed by Vite, normally **http://localhost:5173**. Type a questio
 | [Using the canvas](docs/usage.md) | Branching, shortcuts, model comparison, navigation, card controls, and tutor notes. |
 | [Models and configuration](docs/configuration.md) | Provider selection, extension inventory, and environment variables. |
 | [Data and privacy](docs/privacy.md) | Local persistence, limitations, tutor isolation, and security precautions. |
-| [Portable `.learn` format](docs/learn-format.md) | v3 document schema, read-only v2 upgrades, merge context, validation, and fixtures. |
+| [Portable `.learn` format](docs/learn-format.md) | v4 document schema, read-only v2/v3 upgrades, generation settings, merge context, and validation. |
 | [Local thread library API](docs/thread-library.md) | Thread controls, import/export, revisions, collision confirmation, trash/restore, and recovery. |
 | [Development](docs/development.md) | Commands, architecture, source map, and contribution checks. |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and useful details for bug reports. |

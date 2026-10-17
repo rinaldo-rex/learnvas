@@ -1,16 +1,25 @@
 import type { ChatMsg } from '../types'
+import { isGenerationMetadata, isThinkingLevel, type GenerationMetadata, type ThinkingLevel, type ThinkingModel } from './thinking.ts'
 
-export interface ModelInfo {
+export interface ModelInfo extends ThinkingModel {
   id: string // "provider/model-id"
   provider: string
   modelId: string
   name: string
 }
 
-export async function fetchModels(): Promise<ModelInfo[]> {
+export interface ModelInventory { models: ModelInfo[]; defaultModel: string | null }
+export async function fetchModels(): Promise<ModelInventory> {
   const res = await fetch('/api/models')
-  const json = (await res.json()) as { models?: ModelInfo[] }
-  return json.models ?? []
+  const json = await res.json()
+  if (!res.ok) throw new Error(json?.error ?? 'Models unavailable')
+  if (!Array.isArray(json?.models) || (json.defaultModel !== null && typeof json.defaultModel !== 'string') || json.models.some((model: ModelInfo) =>
+    !model || typeof model.id !== 'string' || typeof model.provider !== 'string' || typeof model.modelId !== 'string' || typeof model.name !== 'string' ||
+    !Array.isArray(model.thinkingLevels) || !model.thinkingLevels.every(isThinkingLevel) ||
+    !isThinkingLevel(model.defaultThinking) || !model.thinkingLevels.includes(model.defaultThinking) || typeof model.reasoning !== 'boolean')) {
+    throw new Error('Restart the bridge to load thinking-effort support.')
+  }
+  return { models: json.models, defaultModel: typeof json.defaultModel === 'string' ? json.defaultModel : null }
 }
 
 /** Human label for a stored model id: "Gemini 3.6 Flash (google)". Falls back to the raw id. */
@@ -77,7 +86,8 @@ export async function saveTutorNotes(globalNotes: string): Promise<TutorNotes> {
 }
 
 class ThreadApiErrorWithCode extends Error {
-  constructor(message: string, readonly code: string) { super(message) }
+  readonly code: string
+  constructor(message: string, code: string) { super(message); this.code = code }
 }
 
 export interface StreamHandlers {
@@ -85,19 +95,20 @@ export interface StreamHandlers {
   onDone(): void
   onError(message: string): void
   onTool?(name: string, phase: 'start' | 'end'): void
+  onMetadata?(metadata: GenerationMetadata): void
 }
 
 /** POST /api/chat and consume the SSE stream. On abort: silently stops (no onDone/onError). */
 export function streamChat(
-  opts: { model: string; messages: ChatMsg[]; threadNotes?: string; signal: AbortSignal } & StreamHandlers,
+  opts: { model: string; messages: ChatMsg[]; thinking?: ThinkingLevel; globalNotes?: string; threadNotes?: string; signal: AbortSignal } & StreamHandlers,
 ): void {
-  const { model, messages, threadNotes = '', signal, onDelta, onDone, onError, onTool } = opts
+  const { model, messages, thinking, globalNotes, threadNotes = '', signal, onDelta, onDone, onError, onTool, onMetadata } = opts
   void (async () => {
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ model: model || 'default', messages, ...(threadNotes ? { tutorNotes: threadNotes } : {}) }),
+        body: JSON.stringify({ model: model || 'default', messages, thinking, globalNotes, tutorNotes: threadNotes }),
         signal,
       })
       if (!res.ok || !res.body) {
@@ -107,33 +118,35 @@ export function streamChat(
       const reader = res.body.getReader()
       const dec = new TextDecoder()
       let buf = ''
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buf += dec.decode(value, { stream: true })
-        let idx: number
-        while ((idx = buf.indexOf('\n\n')) !== -1) {
-          const raw = buf.slice(0, idx)
-          buf = buf.slice(idx + 2)
-          for (const line of raw.split('\n')) {
-            if (!line.startsWith('data: ')) continue
-            const evt = JSON.parse(line.slice(6)) as {
-              event: 'delta' | 'done' | 'error' | 'tool'
-              text?: string
-              message?: string
-              name?: string
-              phase?: 'start' | 'end'
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) throw new Error('The answer stream ended before completion.')
+          buf += dec.decode(value, { stream: true })
+          let idx: number
+          while ((idx = buf.indexOf('\n\n')) !== -1) {
+            const raw = buf.slice(0, idx)
+            buf = buf.slice(idx + 2)
+            for (const line of raw.split('\n')) {
+              if (!line.startsWith('data: ')) continue
+              const evt = JSON.parse(line.slice(6))
+              if (signal.aborted) return
+              if (evt.event === 'metadata') {
+                if (!isGenerationMetadata(evt)) throw new Error('Invalid generation metadata')
+                onMetadata?.(evt)
+              } else if (evt.event === 'delta' && typeof evt.text === 'string') onDelta(evt.text)
+              else if (evt.event === 'done') { onDone(); return }
+              else if (evt.event === 'error') { onError(evt.message ?? 'unknown error'); return }
+              else if (evt.event === 'tool' && evt.name) onTool?.(evt.name, evt.phase ?? 'start')
             }
-            if (evt.event === 'delta' && evt.text) onDelta(evt.text)
-            else if (evt.event === 'done') onDone()
-            else if (evt.event === 'error') onError(evt.message ?? 'unknown error')
-            else if (evt.event === 'tool' && evt.name) onTool?.(evt.name, evt.phase ?? 'start')
           }
         }
+      } finally {
+        await reader.cancel().catch(() => {})
+        reader.releaseLock()
       }
-      onDone()
     } catch (e) {
-      if ((e as Error).name === 'AbortError') return
+      if (signal.aborted || (e as Error).name === 'AbortError') return
       onError(String((e as Error).message ?? e))
     }
   })()

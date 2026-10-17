@@ -108,7 +108,7 @@ test('library APIs initialize isolated directories, CRUD a full document, and re
   assert.equal((await fs.stat(path.join(directory, saved.body.filename))).mode & 0o777, 0o600)
 })
 
-test('reading v2 is read-only; revision-checked saving upgrades to v3 and persists merge sources', async t => {
+test('reading v2 is read-only; revision-checked saving upgrades to v4 and persists merge sources', async t => {
   const { library, directory } = await setup(t)
   await fs.mkdir(directory, { recursive: true })
   const old = document('Legacy merge test', { version: 2 })
@@ -116,16 +116,39 @@ test('reading v2 is read-only; revision-checked saving upgrades to v3 and persis
   const bytes = JSON.stringify(old)
   await fs.writeFile(filename, bytes)
   const loaded = await library.read(old.threadId)
-  assert.equal(loaded.document.version, 3)
+  assert.equal(loaded.document.version, 4)
   assert.equal(await fs.readFile(filename, 'utf8'), bytes)
   const updated = structuredClone(loaded.document)
   updated.cards.push({ id: 'merge', kind: 'prompt', position: { x: 900, y: 300 }, text: 'Compare these', sent: false, collapsed: false, mergeContext: 'selected' })
   for (const source of ['answer-biology', 'root-math']) updated.connections.push({ id: `merge-${source}`, source, target: 'merge', sourceHandle: 's', targetHandle: 't' })
   const saved = await library.save(old.threadId, updated, loaded.revision)
   assert.deepEqual((await new ThreadLibrary({ directory }).read(old.threadId)).document, updated)
-  assert.equal(JSON.parse(await fs.readFile(filename, 'utf8')).version, 3)
+  assert.equal(JSON.parse(await fs.readFile(filename, 'utf8')).version, 4)
   await assert.rejects(library.save(old.threadId, updated, loaded.revision), code('revision-conflict'))
   assert.notEqual(saved.revision, loaded.revision)
+})
+
+test('v3 reads/listing preserve original bytes and revisions; explicit v4 save adds thinking metadata', async t => {
+  const { library, directory } = await setup(t)
+  await fs.mkdir(directory, { recursive: true })
+  const old = document('Legacy v3', { version: 3 })
+  const filename = path.join(directory, 'Legacy v3.learn')
+  const bytes = JSON.stringify(old)
+  await fs.writeFile(filename, bytes)
+  const loaded = await library.read(old.threadId)
+  await library.list()
+  assert.equal(await fs.readFile(filename, 'utf8'), bytes)
+  assert.equal((await library.read(old.threadId)).revision, loaded.revision)
+  assert.equal(loaded.document.version, 4)
+  assert.ok(loaded.document.cards.filter(card => card.kind === 'response').every(card => !Object.hasOwn(card, 'thinking')))
+  loaded.document.cards.find(card => card.kind === 'prompt').thinkingEfforts = ['low', 'high']
+  const response = loaded.document.cards.find(card => card.kind === 'response')
+  response.requestedThinking = 'low'
+  response.thinking = 'high'
+  await library.save(old.threadId, loaded.document, loaded.revision)
+  const saved = JSON.parse(await fs.readFile(filename, 'utf8'))
+  assert.equal(saved.version, 4)
+  assert.equal(saved.cards.find(card => card.id === response.id).thinking, 'high')
 })
 
 test('create and rename collisions require exact numbered-name confirmation, without silent writes', async t => {

@@ -160,6 +160,15 @@ body {
   white-space: nowrap;
   max-width: 130px;
 }
+.response-generation {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.response-generation .model { max-width: 100%; align-self: flex-start; }
+.thinking-label { font-size: 11px; color: var(--body-text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spacer {
   flex: 1;
 }
@@ -893,3 +902,16 @@ button.help-button {
 .thread-save-status { max-width: 200px; overflow-wrap: anywhere; }
 .thread-panel button:disabled { opacity: 0.5; cursor: default; }
 .thread-panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Per-prompt effort choices: a small control, not a comparison dashboard. */
+.thinking-choices { margin: 4px 12px 8px; padding: 7px 8px; border: 1px solid var(--border-soft); border-radius: 7px; font-size: 11px; color: var(--body-text); }
+.thinking-choices legend { color: var(--muted); padding: 0 3px; }
+.thinking-options { display: flex; flex-wrap: wrap; gap: 5px 10px; }
+.thinking-options label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.thinking-options input { margin: 0; accent-color: var(--accent); }
+.thinking-choices p { margin: 6px 0 0; color: var(--muted); font-size: 10px; }
+.thinking-unavailable, .generation-problem { color: var(--warning-text); }
+.generation-problem { margin: 4px 12px 8px; font-size: 11px; }
+.generation-settings-notice { background: var(--surface); border: 1px solid var(--border); padding: 8px; border-radius: 8px; font-size: 12px; margin-top: 8px; }
+.generation-settings-notice button { margin-left: 8px; }
+.thinking-options input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

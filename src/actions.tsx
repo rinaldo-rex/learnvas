@@ -2,14 +2,16 @@ import { createContext, useContext } from 'react'
 import type { PromptData, ResponseData } from './types'
 import type { ModelInfo } from './lib/api'
 import type { ContinuationPort } from './lib/ports'
+import type { ThinkingLevel } from './lib/thinking'
 
 export interface AppActions {
   // kind is omitted from patches — the discriminant must never be patched.
   patchNode(id: string, patch: Partial<Omit<PromptData, 'kind'>> & Partial<Omit<ResponseData, 'kind'>>): void
   updatePrompt(id: string, patch: Partial<PromptData>): void
   removeNode(id: string): void
-  /** Send (or re-run with the currently selected model) the prompt card's text. */
-  sendPrompt(promptId: string): void
+  /** Send/re-run this prompt's efforts with the selected model. The optional
+   * initial choices preserve UI defaults without saving just by opening a file. */
+  sendPrompt(promptId: string, initialEfforts?: ThinkingLevel[]): void
   /** Create a focused draft prompt connected to the selected source card.
    *  The excerpt is quoted; a response starts only when the draft is sent. */
   branchPrompt(sourceId: string, quote: string): void
@@ -23,7 +25,9 @@ export interface AppActions {
   selectedNodeIds: string[]
   toggleNodeSelection(id: string): void
   models: ModelInfo[]
+  /** Concrete selected model ID, including the inventory-resolved Pi default. */
   selectedModel: string
+  generationProblem: string | null
   setSelectedModel(id: string): void
   /** Server-backed notes applied to every thread; shared through context until the notes panel consumes it. */
   globalNotes: string

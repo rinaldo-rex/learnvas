@@ -43,7 +43,7 @@ The browser run validates request construction and streaming UI, not the quality
 ## Rollback and deliberate limits
 
 - Feature work is split into conventional, atomic commits on `feat/conversation-merges`; the pre-existing untracked `pnpm-workspace.yaml` is untouched.
-- Saves/exports emit `.learn` v3. v2 files remain readable and are not rewritten just by reading. **Older builds cannot read v3**: keep v2 backups before saving if you need to roll back the application. Reverting code does not downgrade merged documents.
+- Current saves/exports emit `.learn` v4 (v3 introduced merges; v4 adds thinking settings). v2/v3 files remain readable and are not rewritten just by reading. **Older builds cannot read v4**: keep v2/v3 backups before saving if you need to roll back. Reverting code does not downgrade merged documents.
 - One context setting applies to the whole merge and is locked once sent; compare scopes using separate merge drafts. Per-card context controls are tracked in [#22](https://github.com/rinaldo-rex/learnvas/issues/22).
 - Sources are live card references, not frozen snapshots. Re-running uses their current content. Deleting a source disconnects it; remaining sources keep the shared merge alive.
 - Merge creation itself is not undoable; existing deletion undo can remove/restore a merge branch.

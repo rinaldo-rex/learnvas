@@ -1,0 +1,106 @@
+{
+  "format": "learnvas",
+  "version": 3,
+  "threadId": "f6c91cfe-ad2a-4944-a649-71422843cf55",
+  "title": "Photosynthesis — branches and comparisons",
+  "createdAt": "2026-01-01T10:00:00.000Z",
+  "updatedAt": "2026-01-01T10:15:00.000Z",
+  "cards": [
+    {
+      "id": "root-biology",
+      "kind": "prompt",
+      "position": { "x": -140, "y": 0 },
+      "text": "How does photosynthesis work?",
+      "sent": true,
+      "collapsed": true
+    },
+    {
+      "id": "answer-biology",
+      "kind": "response",
+      "position": { "x": 230, "y": 0 },
+      "text": "## Photosynthesis\nPlants convert light into chemical energy.\n\nCarbon dioxide + water → sugar + oxygen.",
+      "model": "anthropic/claude-sonnet-4",
+      "status": "done",
+      "sourcePromptId": "root-biology",
+      "collapsed": true,
+      "width": 480,
+      "height": 360
+    },
+    {
+      "id": "quote-draft",
+      "kind": "prompt",
+      "position": { "x": 250, "y": -330 },
+      "text": "Why is this stored energy useful?",
+      "quote": "Plants convert light into chemical energy.",
+      "sent": true,
+      "collapsed": false,
+      "width": 300,
+      "height": 210
+    },
+    {
+      "id": "partial-answer",
+      "kind": "response",
+      "position": { "x": -200, "y": -330 },
+      "text": "The stored energy can be used when light is unavailable, such as",
+      "model": "openai/gpt-4.1",
+      "status": "stopped",
+      "sourcePromptId": "quote-draft",
+      "collapsed": false,
+      "width": 420,
+      "height": 280
+    },
+    {
+      "id": "unsent-branch",
+      "kind": "prompt",
+      "position": { "x": -400, "y": 120 },
+      "text": "",
+      "sent": false,
+      "collapsed": false
+    },
+    {
+      "id": "prompt-quote",
+      "kind": "prompt",
+      "position": { "x": -140, "y": 350 },
+      "text": "Compare this with respiration.\nGive a simple example.",
+      "quote": "photosynthesis",
+      "sent": false,
+      "collapsed": false
+    },
+    {
+      "id": "comparison-answer",
+      "kind": "response",
+      "position": { "x": 550, "y": -530 },
+      "text": "A partial comparison.\n\n⚠️ Provider unavailable",
+      "model": "pi default",
+      "status": "error",
+      "sourcePromptId": "root-biology",
+      "collapsed": false
+    },
+    {
+      "id": "root-math",
+      "kind": "prompt",
+      "position": { "x": 1200, "y": 600 },
+      "text": "Explain eigenvectors.",
+      "sent": false,
+      "collapsed": true
+    },
+    {
+      "id": "root-empty",
+      "kind": "prompt",
+      "position": { "x": -800, "y": 900 },
+      "text": "",
+      "quote": "",
+      "sent": false,
+      "collapsed": false
+    }
+  ],
+  "connections": [
+    { "id": "edge-answer", "source": "root-biology", "target": "answer-biology", "sourceHandle": "s", "targetHandle": "t" },
+    { "id": "edge-quote", "source": "answer-biology", "target": "quote-draft", "sourceHandle": "s-top", "targetHandle": "t-bottom" },
+    { "id": "edge-partial", "source": "quote-draft", "target": "partial-answer", "sourceHandle": "s-left", "targetHandle": "t-right" },
+    { "id": "edge-unsent", "source": "answer-biology", "target": "unsent-branch", "sourceHandle": "s-left", "targetHandle": "t-right" },
+    { "id": "edge-prompt-quote", "source": "root-biology", "target": "prompt-quote", "sourceHandle": "s-bottom", "targetHandle": "t-top" },
+    { "id": "edge-comparison", "source": "root-biology", "target": "comparison-answer", "sourceHandle": "s-corner", "targetHandle": "t" }
+  ],
+  "viewport": { "x": -325.5, "y": 118.25, "zoom": 0.75 }
+}

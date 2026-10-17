@@ -10,6 +10,7 @@ import { SelectableCard } from '../components/SelectableCard'
 import { ResponseMarkdown } from '../components/ResponseMarkdown'
 import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
+import { thinkingLabel } from '../lib/thinking'
 import { useOverflowing } from '../lib/useOverflow'
 import type { ResponseNode } from '../types'
 
@@ -116,8 +117,10 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
       >
         <span className={`status-dot ${data.status}`} />
         <span className="tag asst">Assistant</span>
-        <span className="model">{modelLabel(data.model, models)}</span>
-        <span className="spacer" />
+        <div className="response-generation">
+          <span className="model" title={data.model}>{modelLabel(data.model, models)}</span>
+          <span className="thinking-label" title={`${thinkingLabel(data)} — recorded SDK session setting, not measured compute or a quality guarantee`}>{thinkingLabel(data)}</span>
+        </div>
         {streaming && (
           <button
             className="ghost"

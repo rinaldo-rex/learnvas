@@ -5,6 +5,7 @@
 | Symptom | Check |
 | --- | --- |
 | Empty model list or authentication error | Authenticate through Pi, check provider environment variables, and inspect the bridge terminal. Return focus to the app to refresh the model list. |
+| Ask disabled or effort choices unavailable | Restart the bridge after upgrading, then use **Reload generation settings**. Select at least one supported effort in the prompt; remove unavailable old choices or use **Use normal answer** for a non-thinking model. Check note-loading errors too. |
 | Provider or quota error | Confirm that the chosen model is supported by your account and that quota/credits are available. Listing a model does not validate a request against that provider. |
 | Web-enabled responses fail | Check `pi-web-access` installation and configuration, inspect the Extensions accordion, or restart with `LEARNVAS_WEB_ACCESS=0` to isolate the problem. |
 | Extension changes do not appear | Restart the bridge. Refreshing the inventory reads the last load snapshot; it does not reload extension code. |
@@ -18,7 +19,7 @@ See [Getting started](getting-started.md) for authentication and launch instruct
 
 ## Portable files and save conflicts
 
-Import validates content rather than trusting the filename. Check the error's field path, supported versions (v3 and read-only v2 upgrades; retired v1 files must be recreated), UTF-8 encoding, and 8 MiB limit; rejected files are not rewritten. Duplicate IDs offer a separate copy only. Cancelling either the import/copy prompt or the numbered-filename confirmation adds nothing.
+Import validates content rather than trusting the filename. Check the error's field path, supported versions (v4 and read-only v2/v3 upgrades; retired v1 files must be recreated), UTF-8 encoding, and 8 MiB limit; rejected files are not rewritten. Duplicate IDs offer a separate copy only. Cancelling either the import/copy prompt or the numbered-filename confirmation adds nothing.
 
 Export stops active generation and saves the latest canvas first. A save error/conflict produces no download. Keep the current canvas open; retry saving or enter a new title and use **Save recovery copy**, then export that copy. Do not blindly replace a conflicting revision. Stop the bridge before editing managed files manually. If an I/O error may have occurred after a write became visible, refresh the list before retrying.
 

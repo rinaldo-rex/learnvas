@@ -14,7 +14,7 @@ const merged = (scope = 'histories') => ({
   connections: [edge('a', 'merge'), edge('b', 'merge')],
 })
 
-test('v3 merges unrelated sources and round-trips scope, source order, and connections', () => {
+test('current merges unrelated sources and round-trips scope, source order, and connections', () => {
   for (const scope of ['selected', 'histories']) {
     const d = merged(scope)
     const restored = canvasToDocument(documentToCanvas(d), d)
@@ -23,14 +23,14 @@ test('v3 merges unrelated sources and round-trips scope, source order, and conne
   }
 })
 
-test('v2 forests upgrade read-only to v3 without changing identity or content', () => {
+test('v2 forests upgrade read-only to v4 without changing identity or content', () => {
   const legacy = { ...fixture(), version: 2 }
   const before = JSON.stringify(legacy)
   const migrated = validateDocument(legacy)
-  assert.equal(migrated.version, 3)
-  assert.deepEqual(migrated, { ...legacy, version: 3 })
+  assert.equal(migrated.version, 4)
+  assert.deepEqual(migrated, { ...legacy, version: 4 })
   assert.equal(JSON.stringify(legacy), before)
-  assert.equal(parseDocument(serializeDocument(migrated)).version, 3)
+  assert.equal(parseDocument(serializeDocument(migrated)).version, 4)
   assert.throws(() => validateDocument({ ...merged(), version: 2 }), /unknown field/)
   const forest = { ...merged(), version: 2 }
   delete forest.cards[2].mergeContext

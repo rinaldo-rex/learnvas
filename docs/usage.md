@@ -41,6 +41,18 @@ A selected passage or **+** creates a **draft**, not an immediate model request.
 
 Deleting one source disconnects it but preserves a shared merge while another source remains. Deleting the merge itself, or all of its sources, removes its downstream branch. Undo restores source cards and connections. Context is assembled from the current source text at send/re-run time, not a frozen snapshot.
 
+## Compare thinking efforts
+
+Choose a model in the toolbar, then choose **Thinking effort** inside each expanded prompt card. The choices come from Pi's model capabilities. Each prompt has its own selection; the model selector remains shared for the next submission.
+
+- Start with one SDK-default effort. Selecting **Low + High** makes **Ask · 2 responses** (or **Re-run · 2 responses**) start two independent answers together. **Ctrl/Cmd+Enter** uses the same choices. Each selected effort is a separate request; web-enabled answers may involve additional tool/model turns.
+- All siblings use the same model, question, conversation context, and displayed global/thread note snapshot. Changes after Ask affect future submissions, not in-flight answers.
+- Each answer records its model and **Thinking** setting, even when collapsed. Stopping/deleting one answer does not stop the others; a provider error does not trigger an automatic retry. Thread switching and export stop/save all active answers as before.
+- Existing choices that a new model does not support remain visibly unavailable. Remove them or choose **Use normal answer** for a non-thinking model; nothing is silently substituted. Selecting no efforts disables Ask/Re-run.
+- **Not recorded** means the old answer has no effort metadata. **Unconfirmed (requested …)** means the request has not supplied session confirmation. A requested/effective difference shows both; non-thinking models say **Not supported**. These are SDK session settings, not scores, measured compute, or proof that a higher effort is better. Virtual routers/provider mappings may make further unreported adjustments.
+
+Prompt selections and per-answer metadata travel with `.learn` v4 exports. Existing v2/v3 files remain readable; back them up before saving if you need compatibility with older Learnvas builds.
+
 ## Tune the tutor with notes
 
 Open the **Notes** chip in the top-right for standing requests the tutor follows on every new question — for example “use mermaid diagrams for structure” or “keep answers under 300 words”.
@@ -56,13 +68,13 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 
 | Action | How it works |
 | --- | --- |
-| Send a prompt | Click **Ask →** or press **Ctrl+Enter** / **Cmd+Enter**. Plain Enter adds a newline. |
+| Send a prompt | Click **Ask · N responses →** or press **Ctrl+Enter** / **Cmd+Enter**. Runs the prompt's selected efforts together. Plain Enter adds a newline. |
 | Quote and branch | Select text in an answer or prompt input, then release the mouse. A connected draft opens with the quote and a focused input. Add your question and send it. |
 | Continue without a quote | Hover over a card and click a **+**. A blank prompt appears on the chosen side, and the canvas brings it into view. |
 | Start a separate conversation | Click **＋ New prompt** in the toolbar. This creates a new root rather than a continuation. |
 | Select cards | Press **S**, then click cards to toggle their selection. Press **Esc** or **S** to cancel. |
 | Merge selected cards | Select at least two cards, press **M**, choose context, write instructions, and send. |
-| Compare models | Choose another model, expand a sent prompt, and click **↻ Re-run**. The original response stays on the canvas. |
+| Compare models | Choose another model, expand a sent prompt, review its effort choices, and click **↻ Re-run · N responses**. Previous responses stay on the canvas. |
 | Move a card | Drag its header. Dragging answer text selects it rather than moving the card. |
 | Collapse or expand | Click an answer's header or a sent prompt's header. Draft prompts stay expanded. |
 | Resize an answer | Drag its bottom-right resize grip. Its size is restored after collapsing and expanding. |
