@@ -27,7 +27,19 @@ flowchart TD
   D --> F[Continue the thread]
 ```
 
-A selected passage or **+** creates a **draft**, not an immediate model request. Sending the draft uses the model selected at that moment and includes its ancestral conversation history. Other branches are not included.
+A selected passage or **+** creates a **draft**, not an immediate model request. Sending the draft uses the model selected at that moment and includes its ancestral conversation history. Other branches are not included unless you explicitly merge them.
+
+## Merge conversations
+
+1. Press **S** (outside an input), or click **Select cards (S)**, to enter selection mode.
+2. Click any two or more prompt/response cards, including cards from unrelated roots. Click again to deselect. Card controls and dragging are paused while selecting; Tab/Space/Enter can also toggle the selection buttons.
+3. Press **M**, or click **Merge (M)**. A connected merge draft opens and focuses its input. No model request starts yet; originals stay intact.
+4. Choose **Selected cards only** or **Cards + histories** (default). The first sends only source-card content, while the second includes earlier discussion and shared history once. One setting applies to the whole merge; [per-source controls are deferred](https://github.com/rinaldo-rex/learnvas/issues/22).
+5. Write instructions such as “Merge only the criticism about X and Y,” then send normally. A separate response appears using the selected model.
+
+**Esc** or **S** cancels selection. **M** needs at least two cards. The selection bar stays available in zen mode. Selection is temporary, not saved; drafts, connections, and the context setting are saved. Once sent, a scope badge stays visible and the setting is locked; create a new merge to compare scopes. Continue from the response normally: excluded histories do not silently return in later replies, including nested history merges.
+
+Deleting one source disconnects it but preserves a shared merge while another source remains. Deleting the merge itself, or all of its sources, removes its downstream branch. Undo restores source cards and connections. Context is assembled from the current source text at send/re-run time, not a frozen snapshot.
 
 ## Tune the tutor with notes
 
@@ -48,13 +60,15 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Quote and branch | Select text in an answer or prompt input, then release the mouse. A connected draft opens with the quote and a focused input. Add your question and send it. |
 | Continue without a quote | Hover over a card and click a **+**. A blank prompt appears on the chosen side, and the canvas brings it into view. |
 | Start a separate conversation | Click **＋ New prompt** in the toolbar. This creates a new root rather than a continuation. |
+| Select cards | Press **S**, then click cards to toggle their selection. Press **Esc** or **S** to cancel. |
+| Merge selected cards | Select at least two cards, press **M**, choose context, write instructions, and send. |
 | Compare models | Choose another model, expand a sent prompt, and click **↻ Re-run**. The original response stays on the canvas. |
 | Move a card | Drag its header. Dragging answer text selects it rather than moving the card. |
 | Collapse or expand | Click an answer's header or a sent prompt's header. Draft prompts stay expanded. |
 | Resize an answer | Drag its bottom-right resize grip. Its size is restored after collapsing and expanding. |
 | Navigate | Drag empty canvas space to pan; use wheel/trackpad gestures, zoom controls, fit-view, or the minimap. Scrollable card content keeps wheel scrolling inside the card. |
 | Stop an answer | Click **■ stop** while the response is streaming. The partial answer remains. |
-| Delete a branch | Click **×** on a card, or hover over it and press **X**. That card **and all downstream cards** are removed. |
+| Delete a branch | Click **×** on a card, or hover over it and press **X**. That card and its unshared descendants are removed; shared merges survive while another source remains. |
 | Undo deletion | Press **Ctrl+Z** / **Cmd+Z** outside inputs and modals to restore the last deleted branch. Only deletion is undoable; other canvas changes are kept. |
 | Reset the canvas | Click **Clear** and confirm. This removes the current canvas, not your theme preference or Pi credentials. |
 | Change appearance | Choose **Theme: System**, **Light**, or **Dark**. System mode reacts to OS appearance changes. |
@@ -63,7 +77,7 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Tune the tutor | Click the **Notes** chip (top-right) for standing requests: **Global · all threads** applies everywhere; **This thread** applies here and travels on export/import. Applied to every new question. |
 | Command palette | Press **Ctrl+K** / **Cmd+K**. The palette is empty for now; **Esc** closes it. |
 
-The single-key shortcuts (**X**, **?**, **Z**) do not run while typing in an input or while a modal is open. Holding a key down does not repeat an action.
+The single-key shortcuts (**S**, **M**, **X**, **?**, **Z**) do not run while typing in an input or while a modal is open. Holding a key down does not repeat an action.
 
 While editing, **Ctrl+Z** / **Cmd+Z** is left to the input's native text editing rather than canvas history. Canvas deletion history retains up to 50 deletions until a thread switch, reload, or **Clear**; there is no redo yet. Restored streaming answers are marked stopped, not restarted.
 

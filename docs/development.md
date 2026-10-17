@@ -32,7 +32,7 @@ flowchart TD
 
 - **Frontend:** React 19, TypeScript, Vite, and [React Flow](https://reactflow.dev/). Prompt and response cards are custom node types. `react-markdown`, `remark-gfm`, and `remark-breaks` render answer text.
 - **Bridge:** Node's built-in HTTP server and `@earendil-works/pi-coding-agent`; no separate backend framework or database.
-- **Conversation graph:** Directed edges connect cards. Before sending, the frontend walks only the prompt's ancestry to assemble user/assistant messages. The bridge folds those messages into a transcript plus the new question for a fresh Pi session.
+- **Conversation graph:** Directed edges connect cards. Before sending, `conversation.ts` resolves the prompt's context. Ordinary chains retain user/assistant messages; merge graphs use labeled reference cards with shared ancestors deduplicated and selected-only boundaries respected in later continuations. The bridge folds those messages into a transcript plus the new question for a fresh Pi session.
 - **Streaming:** The bridge emits Server-Sent Events over the chat POST response. The frontend batches text updates with `requestAnimationFrame`.
 
 Provider warmup, per-request extension loading, and tutor isolation are explained in [Models and configuration](configuration.md) and [Data and privacy](privacy.md).
@@ -53,8 +53,10 @@ Paths below are relative to the project root.
 | `src/lib/portableDocument.ts`, `src/lib/portableDocument.test.mjs` | Bounded portable uploads/downloads and isolated cross-library/error/collision tests. |
 | `src/components/ThreadPanel.tsx` | Accessible collapsible thread management and file controls. |
 | `src/components/TutorNotesPanel.tsx` | Collapsed top-right notes overlay: global and per-thread tutor notes with accordions. |
+| `src/lib/conversation.ts`, `src/lib/mergeDraft.ts` | Merge context traversal, selected-only boundaries, stable source order, and merge-draft placement. |
+| `src/components/SelectableCard.tsx` | Inert card controls plus accessible click/keyboard selection overlays. |
 | `src/lib/ports.ts` | Available sides, branch placement, and response direction. |
-| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v2 schema, validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
+| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v3 schema (strict, read-only v2 upgrades), validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
 | `src/lib/fixtures/*.learn` | Representative portable canvases used by round-trip tests. |
 | `src/lib/theme.ts`, `src/lib/useTheme.ts`, `src/theme.css` | Theme preference, system appearance, and color tokens. |
 | `server/index.mjs` | Pi session creation, provider warmup, and bridge startup (loopback-only). |
@@ -77,6 +79,6 @@ pnpm test
 pnpm build
 ```
 
-There is no committed browser-test runner yet. For UI changes, also manually check text-selection branching, all four continuation sides and the corner fallback, header dragging, resized-card collapse, and both color themes. Describe the UI behavior you verified.
+There is no committed browser-test runner yet. For UI changes, also manually check text-selection branching, all four continuation sides and the corner fallback, header dragging, resized-card collapse, and both color themes. Also verify S/click/M selection, both context scopes, unrelated roots, continuations, autosave/reload, shared-source deletion/undo, and Escape in zen mode. Describe the UI behavior you verified; see [merge verification](verification-merges.md).
 
 For bug reports, see [Troubleshooting](troubleshooting.md#reporting-a-problem).

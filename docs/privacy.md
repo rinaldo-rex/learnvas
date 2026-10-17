@@ -4,7 +4,7 @@
 
 ## What is saved
 
-Named canvases autosave as [portable `.learn` v2 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, per-thread tutor notes, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport.
+Named canvases autosave as [portable `.learn` v3 documents](learn-format.md) through the bridge's [filesystem library](thread-library.md) under `~/.learnvas/`, with revision-checked saves and recoverable `.trash/`. The document saves a stable thread ID, title, timestamps, per-thread tutor notes, text/quotes/model identifiers, cards, connections, explicit sizes/collapse state, and viewport.
 
 Browser `localStorage` holds only convenience preferences: `learnvas:last-thread` and `learnvas:theme`. Clearing site data does not delete library files. Old `learnvas:document` and `learnvas:v1` canvases are ignored, without automatic migration or deletion. Invalid/unsupported library files are preserved and reported as warnings, never rewritten silently.
 
@@ -16,7 +16,7 @@ Pi sessions are in-memory and are not saved as Pi session files by Learnvas. `.l
 
 ## What leaves your machine
 
-Prompts and the selected branch's history are sent to the chosen model provider. Web tools may send queries or URLs to external services. Learnvas is not an offline-only tutor.
+Prompts and the selected branch's history are sent to the chosen model provider. Merge prompts may combine multiple branches or unrelated roots: **Selected cards only** sends source-card content, while **Cards + histories** also sends their included ancestry, deduplicated. The scope is saved on the merge prompt; excluded history stays excluded in later continuations. Web tools may send queries or URLs to external services. Learnvas is not an offline-only tutor.
 
 Responses can be inaccurate. Verify important claims and sources, especially for consequential decisions.
 

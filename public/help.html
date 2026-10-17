@@ -113,6 +113,7 @@
   <nav aria-label="Help topics">
     <a href="#start">Start</a>
     <a href="#branch">Branch</a>
+    <a href="#merge">Merge</a>
     <a href="#controls">Controls</a>
     <a href="#models">Models &amp; extensions</a>
     <a href="#privacy">Saving &amp; privacy</a>
@@ -137,9 +138,17 @@
     <blockquote>“gradient descent”<br><strong>Your follow-up:</strong> Can you elaborate more on this?</blockquote>
     <h3>Click a +</h3>
     <p>Hover over a card to reveal <strong>+</strong> buttons on its unused sides. Click one to create a connected blank prompt on that side. If every side is connected, a top-right <strong>+</strong> remains available—there is no connection-count limit.</p>
-    <p class="note">Both actions create a draft, not an immediate request. Sending it uses the currently selected model and that branch’s ancestral conversation history. Other branches are not included.</p>
+    <p class="note">Both actions create a draft, not an immediate request. Sending it uses the currently selected model and that branch’s ancestral conversation history. Other branches are not included unless you explicitly merge them.</p>
     <p>Every question also picks up your <strong>tutor notes</strong> (the <strong>Notes</strong> chip at the top-right): standing requests like “use mermaid diagrams for structure” that shape each answer. Global notes apply to all threads; thread notes apply to the current one. Edits affect new questions, not answers already on the canvas.</p>
     <p>For an unrelated topic, click <strong>＋ New prompt</strong> in the toolbar instead. It creates a separate root conversation.</p>
+  </section>
+
+  <section id="merge" aria-labelledby="merge-title">
+    <h2 id="merge-title">Bring conversations together</h2>
+    <p>Press <kbd>S</kbd>, then click two or more cards to select them—even from unrelated root conversations. Click again to deselect. Press <kbd>M</kbd> to open a connected merge draft; originals stay intact and no request starts yet.</p>
+    <p>Choose <strong>Selected cards only</strong> to send only source-card content, or <strong>Cards + histories</strong> to include earlier discussion, with shared history included once. Write instructions such as “Merge only the criticism about X and Y,” then send normally to create a separate answer.</p>
+    <p class="note">One context switch applies to the whole merge. Its setting is saved and shown as a badge after sending; excluded histories stay excluded when you continue from the answer. Source text is live context, not a frozen snapshot.</p>
+    <p><kbd>Esc</kbd> or <kbd>S</kbd> cancels selection. Selection pauses card controls and dragging; Tab/Space/Enter can toggle selection buttons. The selection bar also works in zen mode.</p>
   </section>
 
   <section id="controls" aria-labelledby="controls-title">
@@ -153,7 +162,7 @@
         <tr><td>Navigate</td><td>Drag empty canvas space to pan; use wheel/trackpad gestures, zoom controls, fit-view, or the minimap. Scrollable card content keeps wheel scrolling inside the card.</td></tr>
         <tr><td>Compare models</td><td>Select another model, expand a sent prompt, and click <strong>↻ Re-run</strong>. The previous response stays on the canvas.</td></tr>
         <tr><td>Stop generation</td><td>Click <strong>■ stop</strong>. The partial answer remains.</td></tr>
-        <tr><td>Delete a branch</td><td>Click <strong>×</strong>, or hover over a card and press <kbd>X</kbd>. This removes the card <strong>and every downstream card</strong>.</td></tr>
+        <tr><td>Delete a branch</td><td>Click <strong>×</strong>, or hover over a card and press <kbd>X</kbd>. This removes the card and its unshared descendants. Shared merges survive while another source remains; undo restores removed source connections.</td></tr>
         <tr><td>Undo deletion</td><td>Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Z</kbd> outside inputs and modals to restore the last deleted branch. Other canvas changes are kept.</td></tr>
         <tr><td>Reset the canvas</td><td>Click <strong>Clear</strong> and confirm. Your theme preference and Pi credentials are not cleared.</td></tr>
         <tr><td>Change appearance</td><td>Choose <strong>Theme: System / Light / Dark</strong>. The choice is remembered; System follows OS changes.</td></tr>
@@ -162,7 +171,7 @@
         <tr><td>Command palette</td><td>Press <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>K</kbd>. No commands yet; <kbd>Esc</kbd> closes it.</td></tr>
       </tbody>
     </table>
-    <p class="note">Single-key shortcuts (<kbd>X</kbd>, <kbd>?</kbd>, <kbd>Z</kbd>) do not run while typing or while a modal is open. Holding a key does not repeat an action.</p>
+    <p class="note">Single-key shortcuts (<kbd>S</kbd>, <kbd>M</kbd>, <kbd>X</kbd>, <kbd>?</kbd>, <kbd>Z</kbd>) do not run while typing or while a modal is open. Holding a key does not repeat an action.</p>
     <p class="note">Only deletion is undoable. Up to 50 deletions are remembered until a thread switch, reload, or <strong>Clear</strong>; there is no redo yet. Restored streaming answers are stopped, not restarted. While editing, <kbd>Ctrl</kbd>/<kbd>Cmd</kbd> + <kbd>Z</kbd> is left to the input’s native text editing rather than canvas history.</p>
     <p class="note">Answers support Markdown headings, lists, links, code blocks, and tables.</p>
   </section>
@@ -187,7 +196,8 @@
       <li><strong>Import .learn</strong> validates UTF-8 content, format, version, graph, and an 8 MiB limit. Confirm the title to add it to the library without switching your canvas. Duplicate IDs require approval of a separate copy; filename collisions require confirmation of a numbered name. Cancel adds nothing. Uploaded originals are never changed.</li>
       <li><strong>Save and export active</strong> stops generation, flushes partial text, saves the latest canvas, and downloads the verified saved document. Saving errors/conflicts produce no download. Files contain the exploration, not credentials, live runtime state, or undo. Text is not redacted—share carefully.</li>
       <li>Reloading or opening an import does not resume generation. Partial saved answers are marked stopped.</li>
-      <li>Prompts and branch history go to the chosen model provider. Web queries and URLs may go to external services. Verify important claims and sources.</li>
+      <li>New saves use <code>.learn</code> v3. Existing v2 files remain readable and upgrade on their next save; reading alone does not rewrite them. Older builds cannot read v3—keep v2 backups if you need to roll back.</li>
+      <li>Prompts and included branch/merge context go to the chosen model provider. Web queries and URLs may go to external services. Verify important claims and sources.</li>
     </ul>
     <p>Tutor sessions are fresh and in-memory: no Pi session files, AGENTS.md context, skills, prompt templates, or built-in file/shell tools are loaded into the tutor session.</p>
     <p><strong>This is not a security sandbox.</strong> Extensions execute local code with the bridge’s permissions. The bridge binds to loopback and checks trusted browser origins, but does not authenticate local programs. Keep it on a trusted local machine; do not expose it through remote proxies.</p>
