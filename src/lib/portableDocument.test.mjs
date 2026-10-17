@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { MAX_DOCUMENT_BYTES, canvasToDocument, documentToCanvas } from './learnDocument.ts'
 import { parsePortableDocument, readPortableFile, validatePortableDocument } from './portableDocument.ts'
 import { ThreadWorkspace } from './threadWorkspace.ts'
+import { buildConversation } from './conversation.ts'
 import { ThreadApiError } from './threadApi.ts'
 import { ThreadLibrary, LibraryError } from '../../server/library.mjs'
 
@@ -71,6 +72,27 @@ test('export from one library and import into another preserves complete semanti
   assert.equal(target.workspace.getSnapshot().active.document.threadId, 'destination')
   assert.equal(target.stops(), 0)
 })
+test('merged graphs export/import across libraries with source order and context boundaries intact', async t => {
+  for (const scope of ['selected', 'histories']) {
+    const source = await setup(t)
+    source.active.cards.push({ id: 'merge', kind: 'prompt', position: { x: 1200, y: 300 }, text: 'Combine these criticisms', collapsed: false, sent: false, mergeContext: scope })
+    for (const id of ['answer-biology', 'partial-answer', 'root-math']) source.active.connections.push({ id: `merge-${id}`, source: id, target: 'merge', sourceHandle: 's', targetHandle: 't' })
+    const exported = await source.workspace.exportActive()
+    const target = await setup(t, () => true, 'destination')
+    const record = await target.workspace.importDocument(parsePortableDocument(bytes(exported.json)), () => true)
+    const imported = (await target.library.read(record.document.threadId)).document
+    assert.deepEqual(imported.cards, source.active.cards)
+    assert.deepEqual(imported.connections, source.active.connections)
+    const canvas = documentToCanvas(imported)
+    const messages = buildConversation(canvas.nodes, canvas.edges, 'merge')
+    const material = JSON.parse(messages[0].content.slice(messages[0].content.indexOf('{')))
+    assert.deepEqual(material.sources, ['answer-biology', 'partial-answer', 'root-math'])
+    assert.equal(material.cards.some(c => c.id === 'root-biology'), scope === 'histories')
+    assert.equal(material.cards.some(c => c.id === 'quote-draft'), scope === 'histories')
+    assert.ok(material.cards.some(c => c.id === 'root-math'))
+  }
+})
+
 test('cancelled initial, duplicate-ID and filename confirmations never mutate library or canvas', async t => {
   for (const phase of ['import', 'copy', 'filename']) {
     const { workspace, library, active, stops } = await setup(t, () => false)
