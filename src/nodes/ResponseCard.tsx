@@ -7,20 +7,11 @@ import {
 import { useReactFlow, type NodeProps } from '@xyflow/react'
 import { NodePorts } from '../components/NodePorts'
 import { SelectableCard } from '../components/SelectableCard'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import remarkBreaks from 'remark-breaks'
-import type { Components } from 'react-markdown'
+import { ResponseMarkdown } from '../components/ResponseMarkdown'
 import { useApp } from '../actions'
 import { modelLabel } from '../lib/api'
 import { useOverflowing } from '../lib/useOverflow'
 import type { ResponseNode } from '../types'
-
-// Module-level so the markdown pipeline identity is stable across renders.
-const remarkPlugins = [remarkGfm, remarkBreaks]
-const mdComponents: Components = {
-  a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
-}
 
 export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
   const { patchNode, removeNode, branchPrompt, stopStream, models, resizeNode } = useApp()
@@ -159,9 +150,7 @@ export function ResponseCard({ id, data }: NodeProps<ResponseNode>) {
         >
           {streaming && data.activity && <div className="tool-note">{data.activity}</div>}
           {data.text ? (
-            <ReactMarkdown remarkPlugins={remarkPlugins} components={mdComponents}>
-              {data.text}
-            </ReactMarkdown>
+            <ResponseMarkdown text={data.text} streaming={streaming} />
           ) : streaming ? (
             ''
           ) : (

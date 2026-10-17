@@ -66,6 +66,7 @@ For example, ask “How do neural networks learn?”, select “gradient descent
 | Move a card | Drag its header. Dragging answer text selects it rather than moving the card. |
 | Collapse or expand | Click an answer's header or a sent prompt's header. Draft prompts stay expanded. |
 | Resize an answer | Drag its bottom-right resize grip. Its size is restored after collapsing and expanding. |
+| Inspect a Mermaid diagram | After an answer finishes, its Mermaid blocks render inline. Click **Open larger view**, scroll to zoom, drag to pan, or use **−**, **+**, and **Reset to fit**. **Esc** or **Close ×** returns to the card without changing the canvas. |
 | Navigate | Drag empty canvas space to pan; use wheel/trackpad gestures, zoom controls, fit-view, or the minimap. Scrollable card content keeps wheel scrolling inside the card. |
 | Stop an answer | Click **■ stop** while the response is streaming. The partial answer remains. |
 | Delete a branch | Click **×** on a card, or hover over it and press **X**. That card and its unshared descendants are removed; shared merges survive while another source remains. |
@@ -82,6 +83,10 @@ The single-key shortcuts (**S**, **M**, **X**, **?**, **Z**) do not run while ty
 While editing, **Ctrl+Z** / **Cmd+Z** is left to the input's native text editing rather than canvas history. Canvas deletion history retains up to 50 deletions until a thread switch, reload, or **Clear**; there is no redo yet. Restored streaming answers are marked stopped, not restarted.
 
 Answers stream as Markdown, including headings, links, code blocks, lists, and tables. With web access enabled, the tutor can look up current information and supply sources.
+
+Fenced `mermaid` blocks render locally as static diagrams once generation finishes (including stopped answers with valid blocks). Saved and imported diagrams render without model credentials. Each diagram has its own larger viewer and **Diagram source** disclosure. During streaming, or if a diagram cannot render, its source remains readable; surrounding Markdown is unaffected.
+
+This is a read-only diagram viewer, not a full Mermaid embed: configuration/frontmatter, embedded assets/HTML (apart from simple `<br>` line breaks), links, custom style directives, and escaped source are conservatively kept as source rather than executed. Very large diagrams also fall back to source (30,000 characters / 300 edges). Original Markdown is preserved verbatim in `.learn` files; SVG images and viewer zoom/pan are not saved.
 
 Cards, text/quotes/model identifiers, connections, explicit sizes/collapse state, and viewport autosave to the active file in `~/.learnvas/` using the [`.learn` document format](learn-format.md). The toolbar shows unsaved/saving/saved/error/conflict status. Browser test canvases are not migrated. Reloading restores the saved view and never resumes generation. See [Data and privacy](privacy.md) before treating that storage as a durable record.
 

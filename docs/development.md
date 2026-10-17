@@ -45,6 +45,8 @@ Paths below are relative to the project root.
 | --- | --- |
 | `src/App.tsx` | Canvas state, persistence, model selection, branch history, and response lifecycle. |
 | `src/nodes/` | Prompt and response card interactions and rendering. |
+| `src/components/ResponseMarkdown.tsx`, `src/components/DiagramViewer.tsx`, `src/components/diagrams.css` | Markdown/Mermaid source fallback, inert diagram images, and portal-based modal zoom/pan viewer. |
+| `src/lib/mermaid.ts`, `src/lib/mermaid.test.mjs` | Pre-render resource/config restrictions, lazy serialized Mermaid rendering, image sizing, zoom math, and source round-trip tests. |
 | `src/components/NodePorts.tsx` | Hover **+** buttons and connection handles. |
 | `src/components/ExtensionsPanel.tsx` | Read-only extension inventory. |
 | `src/components/HelpButton.tsx`, `public/help.html` | Modal help overlay and its self-contained HTML guide. |
@@ -79,6 +81,6 @@ pnpm test
 pnpm build
 ```
 
-There is no committed browser-test runner yet. For UI changes, also manually check text-selection branching, all four continuation sides and the corner fallback, header dragging, resized-card collapse, and both color themes. Also verify S/click/M selection, both context scopes, unrelated roots, continuations, autosave/reload, shared-source deletion/undo, and Escape in zen mode. Describe the UI behavior you verified; see [merge verification](verification-merges.md).
+There is no committed browser-test runner yet. For UI changes, also manually check text-selection branching, all four continuation sides and the corner fallback, header dragging, resized-card collapse, and both color themes. Also verify S/click/M selection, both context scopes, unrelated roots, continuations, autosave/reload, shared-source deletion/undo, and Escape in zen mode. Describe the UI behavior you verified; see [merge verification](verification-merges.md) and [Mermaid verification](verification-mermaid.md).
 
 For bug reports, see [Troubleshooting](troubleshooting.md#reporting-a-problem).

@@ -1,0 +1,116 @@
+.mermaid-diagram {
+  margin: 8px 0 12px;
+  padding: 8px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.mermaid-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+  object-fit: contain;
+  user-select: none;
+}
+.diagram-open {
+  display: block;
+  margin: 6px 0;
+}
+.diagram-source summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+}
+.diagram-source pre {
+  margin-top: 6px;
+}
+.diagram-notice {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.mermaid-diagram pre {
+  max-height: 260px;
+  overflow: auto;
+}
+.diagram-dialog {
+  width: min(1100px, 94vw);
+  height: min(800px, 90dvh);
+  max-width: 94vw;
+  max-height: 90dvh;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 18px 70px var(--shadow-plus);
+}
+.diagram-dialog[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.diagram-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.diagram-dialog-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.diagram-dialog-head h2 {
+  font-size: 16px;
+  margin: 0;
+}
+.diagram-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.diagram-toolbar output {
+  min-width: 45px;
+  text-align: center;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.diagram-toolbar span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: auto;
+}
+.diagram-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--surface);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.diagram-viewport:active {
+  cursor: grabbing;
+}
+.diagram-viewport img {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  max-width: none;
+  transform-origin: center;
+  pointer-events: none;
+}
+.diagram-dialog button:focus-visible,
+.diagram-open:focus-visible,
+.diagram-source summary:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
+@media (max-width: 600px) {
+  .diagram-dialog { padding: 10px; }
+  .diagram-toolbar span { width: 100%; margin-left: 0; }
+}
