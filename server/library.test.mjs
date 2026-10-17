@@ -108,6 +108,26 @@ test('library APIs initialize isolated directories, CRUD a full document, and re
   assert.equal((await fs.stat(path.join(directory, saved.body.filename))).mode & 0o777, 0o600)
 })
 
+test('reading v2 is read-only; revision-checked saving upgrades to v3 and persists merge sources', async t => {
+  const { library, directory } = await setup(t)
+  await fs.mkdir(directory, { recursive: true })
+  const old = document('Legacy merge test', { version: 2 })
+  const filename = path.join(directory, 'Legacy merge test.learn')
+  const bytes = JSON.stringify(old)
+  await fs.writeFile(filename, bytes)
+  const loaded = await library.read(old.threadId)
+  assert.equal(loaded.document.version, 3)
+  assert.equal(await fs.readFile(filename, 'utf8'), bytes)
+  const updated = structuredClone(loaded.document)
+  updated.cards.push({ id: 'merge', kind: 'prompt', position: { x: 900, y: 300 }, text: 'Compare these', sent: false, collapsed: false, mergeContext: 'selected' })
+  for (const source of ['answer-biology', 'root-math']) updated.connections.push({ id: `merge-${source}`, source, target: 'merge', sourceHandle: 's', targetHandle: 't' })
+  const saved = await library.save(old.threadId, updated, loaded.revision)
+  assert.deepEqual((await new ThreadLibrary({ directory }).read(old.threadId)).document, updated)
+  assert.equal(JSON.parse(await fs.readFile(filename, 'utf8')).version, 3)
+  await assert.rejects(library.save(old.threadId, updated, loaded.revision), code('revision-conflict'))
+  assert.notEqual(saved.revision, loaded.revision)
+})
+
 test('create and rename collisions require exact numbered-name confirmation, without silent writes', async t => {
   const { request, directory } = await api(t)
   const a = document('Physics')
@@ -239,7 +259,7 @@ test('API validates envelopes/documents, size bounds, UTF-8, traversal, and unkn
     ['/api/threads', 'POST', [], 400, 'invalid-request'],
     ['/api/threads', 'POST', {}, 400, 'invalid-request'],
     ['/api/threads', 'POST', { document: document(), path: '/tmp/escape.learn' }, 400, 'invalid-request'],
-    ['/api/threads', 'POST', { document: document('Bad', { version: 3 }) }, 422, 'unsupported-version'],
+    ['/api/threads', 'POST', { document: document('Bad', { version: 99 }) }, 422, 'unsupported-version'],
     ['/api/threads', 'POST', { document: document('Bad', { version: 1 }) }, 422, 'unsupported-version'],
     ['/api/threads', 'POST', { document: document('Bad', { extra: 1 }) }, 422, 'invalid-document'],
     ['/api/threads', 'POST', { document: document('', {}) }, 422, 'invalid-document'],

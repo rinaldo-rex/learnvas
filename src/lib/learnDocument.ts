@@ -1,9 +1,9 @@
-import type { LVEdge, LVNode } from '../types'
+import type { LVEdge, LVNode, MergeContext } from '../types'
 import { SOURCE_HANDLES, TARGET_HANDLES } from './ports.ts'
 
 export const LEARN_FORMAT = 'learnvas' as const
-// v2 adds per-thread tutorNotes; v1 is unsupported (early-stage format, no users, no migration).
-export const LEARN_VERSION = 2 as const
+// v3 adds merge prompts. Strict v2 forests upgrade read-only; v1 remains retired.
+export const LEARN_VERSION = 3 as const
 export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 
 /** Canonical fields only: none of these types depend on React Flow. */
@@ -36,6 +36,7 @@ export interface LearnPrompt extends CardBase {
   kind: 'prompt'
   sent: boolean
   quote?: string
+  mergeContext?: MergeContext
 }
 
 export interface LearnResponse extends CardBase {
@@ -135,12 +136,12 @@ function array(value: unknown, path: string): unknown[] {
   return Array.from(value) // Treat sparse JS input as invalid elements, not silently skipped records.
 }
 
-function card(value: unknown, index: number): LearnCard {
+function card(value: unknown, index: number, legacy: boolean): LearnCard {
   const path = `document.cards[${index}]`
   const c = object(value, path)
   const common = ['id', 'kind', 'position', 'text', 'collapsed', 'width', 'height']
   if (c.kind !== 'prompt' && c.kind !== 'response') invalid(`${path}.kind`, 'expected prompt or response')
-  fields(c, [...common, ...(c.kind === 'prompt' ? ['sent', 'quote'] : ['model', 'status', 'sourcePromptId'])], path)
+  fields(c, [...common, ...(c.kind === 'prompt' ? ['sent', 'quote', ...(legacy ? [] : ['mergeContext'])] : ['model', 'status', 'sourcePromptId'])], path)
   const base: CardBase = {
     id: text(c.id, `${path}.id`, true),
     position: position(c.position, `${path}.position`),
@@ -152,6 +153,11 @@ function card(value: unknown, index: number): LearnCard {
   if (c.kind === 'prompt') {
     const prompt: LearnPrompt = { ...base, kind: 'prompt', sent: boolean(c.sent, `${path}.sent`) }
     if (Object.hasOwn(c, 'quote')) prompt.quote = text(c.quote, `${path}.quote`)
+    if (Object.hasOwn(c, 'mergeContext')) {
+      if (c.mergeContext !== 'selected' && c.mergeContext !== 'histories') invalid(`${path}.mergeContext`, 'expected selected or histories')
+      if (Object.hasOwn(c, 'quote')) invalid(path, 'merge prompts cannot have a single-parent quote')
+      prompt.mergeContext = c.mergeContext
+    }
     return prompt
   }
   if (c.status !== 'done' && c.status !== 'error' && c.status !== 'stopped') invalid(`${path}.status`, 'expected done, error, or stopped (never an active request)')
@@ -183,7 +189,8 @@ function validateGraph(cards: LearnCard[], connections: LearnConnection[]) {
     byId.set(c.id, c)
   }
   const edgeIds = new Set<string>()
-  const parents = new Map<string, string>()
+  const parents = new Map<string, string[]>()
+  const children = new Map<string, string[]>()
   for (const [index, c] of connections.entries()) {
     const path = `document.connections[${index}]`
     if (edgeIds.has(c.id)) invalid(`${path}.id`, 'duplicate connection ID')
@@ -193,29 +200,36 @@ function validateGraph(cards: LearnCard[], connections: LearnConnection[]) {
     if (!source) invalid(`${path}.source`, 'card does not exist')
     if (!target) invalid(`${path}.target`, 'card does not exist')
     if (c.source === c.target) invalid(path, 'self connections are not allowed')
-    if (parents.has(c.target)) invalid(path, 'a card may have only one parent')
+    const incoming = parents.get(c.target) ?? []
+    if (incoming.includes(c.source)) invalid(path, 'duplicate source connection')
+    if (incoming.length && !(target.kind === 'prompt' && target.mergeContext)) invalid(path, 'only merge prompts may have multiple parents')
     if (target.kind === 'response' && (source.kind !== 'prompt' || target.sourcePromptId !== source.id)) {
       invalid(path, 'response parent must match its sourcePromptId and be a prompt')
     }
-    parents.set(c.target, c.source)
+    parents.set(c.target, [...incoming, c.source])
+    const outgoing = children.get(c.source) ?? []
+    outgoing.push(c.target)
+    children.set(c.source, outgoing)
   }
   for (const [index, c] of cards.entries()) {
-    if (c.kind === 'response' && (byId.get(c.sourcePromptId)?.kind !== 'prompt' || parents.get(c.id) !== c.sourcePromptId)) {
+    if (c.kind === 'prompt' && c.mergeContext && !parents.has(c.id)) {
+      invalid(`document.cards[${index}].mergeContext`, 'merge prompts require at least one source')
+    }
+    if (c.kind === 'response' && (byId.get(c.sourcePromptId)?.kind !== 'prompt' || parents.get(c.id)?.[0] !== c.sourcePromptId)) {
       invalid(`document.cards[${index}].sourcePromptId`, 'expected an existing prompt and a matching incoming connection')
     }
   }
-  // Each card has at most one parent: iterative traversal is linear, even for long chains.
-  const visited = new Set<string>()
-  for (const c of cards) {
-    const path = new Set<string>()
-    let id: string | undefined = c.id
-    while (id !== undefined && !visited.has(id)) {
-      if (path.has(id)) invalid('document.connections', 'cycles are not allowed')
-      path.add(id)
-      id = parents.get(id)
+  // Kahn's traversal supports shared ancestry without recursion or a chain-length limit.
+  const remaining = new Map(cards.map(c => [c.id, parents.get(c.id)?.length ?? 0]))
+  const ready = cards.filter(c => !remaining.get(c.id)).map(c => c.id)
+  for (let i = 0; i < ready.length; i++) {
+    for (const child of children.get(ready[i]) ?? []) {
+      const count = remaining.get(child)! - 1
+      remaining.set(child, count)
+      if (!count) ready.push(child)
     }
-    for (const id of path) visited.add(id)
   }
+  if (ready.length !== cards.length) invalid('document.connections', 'cycles are not allowed')
 }
 
 /** Read-only version/migration boundary. No extension or filename inference, no implicit downgrade. */
@@ -224,8 +238,10 @@ export function validateDocument(value: unknown): LearnDocument {
   if (d.format !== LEARN_FORMAT) throw new LearnDocumentError('invalid-format', 'document.format', `expected "${LEARN_FORMAT}"`)
   if (!Number.isInteger(d.version) || (d.version as number) < 1) invalid('document.version', 'expected a positive integer schema version')
   if (d.version === 1) throw new LearnDocumentError('unsupported-version', 'document.version', 'schema version 1 is no longer supported; re-create the thread under the current format')
-  if (d.version !== LEARN_VERSION) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: ${LEARN_VERSION}`)
-  // Future versions must dispatch here to their own validators and explicit migrations.
+  if (d.version !== 2 && d.version !== LEARN_VERSION) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: 2, ${LEARN_VERSION}`)
+  // v2 is validated using its original card/forest rules before returning canonical v3.
+  // Reading never rewrites a library file; its next explicit save emits v3.
+  const legacy = d.version === 2
   fields(d, ['format', 'version', 'threadId', 'title', 'createdAt', 'updatedAt', 'tutorNotes', 'cards', 'connections', 'viewport'], 'document')
   const notes = Object.hasOwn(d, 'tutorNotes') ? text(d.tutorNotes, 'document.tutorNotes') : undefined
   if (notes !== undefined && !notes.trim()) invalid('document.tutorNotes', 'optional string fields must be omitted rather than empty')
@@ -235,7 +251,7 @@ export function validateDocument(value: unknown): LearnDocument {
     format: LEARN_FORMAT, version: LEARN_VERSION,
     threadId: text(d.threadId, 'document.threadId', true), title: text(d.title, 'document.title', true),
     createdAt: timestamp(d.createdAt, 'document.createdAt'), updatedAt: timestamp(d.updatedAt, 'document.updatedAt'),
-    cards: array(d.cards, 'document.cards').map(card),
+    cards: array(d.cards, 'document.cards').map((value, index) => card(value, index, legacy)),
     connections: array(d.connections, 'document.connections').map(connection),
     viewport: { x: number(v.x, 'document.viewport.x'), y: number(v.y, 'document.viewport.y'), zoom: number(v.zoom, 'document.viewport.zoom', true) },
   }
@@ -272,6 +288,7 @@ export function canvasToDocument(canvas: DocumentCanvas, metadata: ThreadMetadat
     if (node.type === 'prompt') {
       const prompt: LearnPrompt = { ...base, kind: 'prompt', sent: node.data.sent }
       if (node.data.quote !== undefined) prompt.quote = node.data.quote
+      if (node.data.mergeContext !== undefined) prompt.mergeContext = node.data.mergeContext
       return prompt
     }
     if (node.type !== 'response') invalid('canvas.nodes', 'unknown node type')

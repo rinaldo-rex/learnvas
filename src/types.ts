@@ -1,5 +1,7 @@
 import type { Edge, Node } from '@xyflow/react'
 
+export type MergeContext = 'selected' | 'histories'
+
 export interface PromptData extends Record<string, unknown> {
   kind: 'prompt'
   text: string
@@ -10,6 +12,8 @@ export interface PromptData extends Record<string, unknown> {
   height?: number
   /** Selected excerpt from the parent card; displayed and included in model context. */
   quote?: string
+  /** Incoming connections are merge sources; selected stops history at each source. */
+  mergeContext?: MergeContext
   /** One-shot signal: autofocus the textarea when the node is created. */
   focus?: boolean
 }

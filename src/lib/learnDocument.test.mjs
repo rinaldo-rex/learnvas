@@ -173,7 +173,7 @@ const invalidCases = [
   ['wrong marker', d => { d.format = 'other' }, 'invalid-format'],
   ['nonstring marker', d => { d.format = 1 }, 'invalid-format'],
   ['retired v1', d => { d.version = 1 }, 'unsupported-version'],
-  ['future version', d => { d.version = 3 }, 'unsupported-version'],
+  ['future version', d => { d.version = 99 }, 'unsupported-version'],
   ['missing version', d => { delete d.version }],
   ['string version', d => { d.version = '1' }],
   ['fractional version', d => { d.version = 1.5 }],
@@ -253,7 +253,7 @@ for (const [name, change, code = 'invalid-document'] of invalidCases) {
   })
 }
 
-test('schema version 1 is retired without migration; v2 documents are the only accepted body', () => {
+test('schema version 1 remains retired without migration', () => {
   const d = fixture()
   d.version = 1
   assert.throws(() => validateDocument(d), error => error instanceof LearnDocumentError && error.code === 'unsupported-version' && /version 1/.test(error.message))
@@ -318,7 +318,7 @@ test('discarded MVP storage is ignored rather than converted or removed', () => 
 })
 
 test('invalid and unsupported browser documents remain byte-for-byte intact on load', () => {
-  for (const raw of ['', '{bad', JSON.stringify({ ...fixture(), version: 3 }), JSON.stringify({ ...fixture(), version: 1 }), JSON.stringify({ ...fixture(), format: 'other' })]) {
+  for (const raw of ['', '{bad', JSON.stringify({ ...fixture(), version: 99 }), JSON.stringify({ ...fixture(), version: 1 }), JSON.stringify({ ...fixture(), format: 'other' })]) {
     const storage = memoryStorage([[CANVAS_STORE_KEY, raw]])
     const loaded = loadCanvas(storage)
     assert.equal(loaded.kind, 'error')
