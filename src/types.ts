@@ -42,7 +42,7 @@ export interface ResponseData extends Record<string, unknown> {
 export type PromptNode = Node<PromptData, 'prompt'>
 export type ResponseNode = Node<ResponseData, 'response'>
 export type LVNode = PromptNode | ResponseNode
-export type LVEdge = Edge
+export type LVEdge = Edge<{ mergeContext?: MergeContext }>
 
 export interface ChatMsg {
   role: 'user' | 'assistant'

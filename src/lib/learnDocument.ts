@@ -3,9 +3,8 @@ import { SOURCE_HANDLES, TARGET_HANDLES } from './ports.ts'
 import { isThinkingLevel, type RecordedThinking, type ThinkingLevel } from './thinking.ts'
 
 export const LEARN_FORMAT = 'learnvas' as const
-// v4 adds thinking metadata and per-prompt selections. Strict v2/v3 reads
-// upgrade in memory only; v1 remains retired.
-export const LEARN_VERSION = 4 as const
+// v5 adds per-source merge scopes. Earlier experimental formats are retired.
+export const LEARN_VERSION = 5 as const
 export const MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 
 /** Canonical fields only: none of these types depend on React Flow. */
@@ -59,6 +58,8 @@ export interface LearnConnection {
   target: string
   sourceHandle: string
   targetHandle: string
+  /** Per-source override; only valid on an incoming connection to a merge prompt. */
+  mergeContext?: MergeContext
 }
 
 export interface LearnDocument extends ThreadMetadata {
@@ -146,14 +147,14 @@ function thinkingLevel(value: unknown, path: string): ThinkingLevel {
   return value
 }
 
-function card(value: unknown, index: number, version: number): LearnCard {
+function card(value: unknown, index: number): LearnCard {
   const path = `document.cards[${index}]`
   const c = object(value, path)
   const common = ['id', 'kind', 'position', 'text', 'collapsed', 'width', 'height']
   if (c.kind !== 'prompt' && c.kind !== 'response') invalid(`${path}.kind`, 'expected prompt or response')
   fields(c, [...common, ...(c.kind === 'prompt'
-    ? ['sent', 'quote', ...(version >= 3 ? ['mergeContext'] : []), ...(version >= 4 ? ['thinkingEfforts'] : [])]
-    : ['model', 'status', 'sourcePromptId', ...(version >= 4 ? ['requestedThinking', 'thinking'] : [])])], path)
+    ? ['sent', 'quote', 'mergeContext', 'thinkingEfforts']
+    : ['model', 'status', 'sourcePromptId', 'requestedThinking', 'thinking'])], path)
   const base: CardBase = {
     id: text(c.id, `${path}.id`, true),
     position: position(c.position, `${path}.position`),
@@ -189,12 +190,16 @@ function card(value: unknown, index: number, version: number): LearnCard {
 function connection(value: unknown, index: number): LearnConnection {
   const path = `document.connections[${index}]`
   const c = object(value, path)
-  fields(c, ['id', 'source', 'target', 'sourceHandle', 'targetHandle'], path)
-  const result = {
+  fields(c, ['id', 'source', 'target', 'sourceHandle', 'targetHandle', 'mergeContext'], path)
+  const result: LearnConnection = {
     id: text(c.id, `${path}.id`, true), source: text(c.source, `${path}.source`, true),
     target: text(c.target, `${path}.target`, true),
     sourceHandle: text(c.sourceHandle, `${path}.sourceHandle`),
     targetHandle: text(c.targetHandle, `${path}.targetHandle`),
+  }
+  if (Object.hasOwn(c, 'mergeContext')) {
+    if (c.mergeContext !== 'selected' && c.mergeContext !== 'histories') invalid(`${path}.mergeContext`, 'expected selected or histories')
+    result.mergeContext = c.mergeContext
   }
   if (!Object.values(SOURCE_HANDLES).includes(result.sourceHandle)) invalid(`${path}.sourceHandle`, 'unknown source port')
   if (!Object.values(TARGET_HANDLES).includes(result.targetHandle)) invalid(`${path}.targetHandle`, 'unknown target port')
@@ -218,6 +223,9 @@ function validateGraph(cards: LearnCard[], connections: LearnConnection[]) {
     const target = byId.get(c.target)
     if (!source) invalid(`${path}.source`, 'card does not exist')
     if (!target) invalid(`${path}.target`, 'card does not exist')
+    if (c.mergeContext !== undefined && !(target.kind === 'prompt' && target.mergeContext)) {
+      invalid(`${path}.mergeContext`, 'source scopes require a merge prompt target')
+    }
     if (c.source === c.target) invalid(path, 'self connections are not allowed')
     const incoming = parents.get(c.target) ?? []
     if (incoming.includes(c.source)) invalid(path, 'duplicate source connection')
@@ -251,16 +259,12 @@ function validateGraph(cards: LearnCard[], connections: LearnConnection[]) {
   if (ready.length !== cards.length) invalid('document.connections', 'cycles are not allowed')
 }
 
-/** Read-only version/migration boundary. No extension or filename inference, no implicit downgrade. */
+/** Strict version boundary. No extension/filename inference or legacy migration. */
 export function validateDocument(value: unknown): LearnDocument {
   const d = object(value, 'document')
   if (d.format !== LEARN_FORMAT) throw new LearnDocumentError('invalid-format', 'document.format', `expected "${LEARN_FORMAT}"`)
   if (!Number.isInteger(d.version) || (d.version as number) < 1) invalid('document.version', 'expected a positive integer schema version')
-  if (d.version === 1) throw new LearnDocumentError('unsupported-version', 'document.version', 'schema version 1 is no longer supported; re-create the thread under the current format')
-  if (![2, 3, LEARN_VERSION].includes(d.version as number)) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; supported: 2, 3, ${LEARN_VERSION}`)
-  // Each legacy version is validated with its original allowlist. Reading never
-  // rewrites a library file; next save emits v4 without invented old metadata.
-  const version = d.version as number
+  if (d.version !== LEARN_VERSION) throw new LearnDocumentError('unsupported-version', 'document.version', `unsupported schema version ${d.version}; only version ${LEARN_VERSION} is supported; re-create the thread under the current format`)
   fields(d, ['format', 'version', 'threadId', 'title', 'createdAt', 'updatedAt', 'tutorNotes', 'cards', 'connections', 'viewport'], 'document')
   const notes = Object.hasOwn(d, 'tutorNotes') ? text(d.tutorNotes, 'document.tutorNotes') : undefined
   if (notes !== undefined && !notes.trim()) invalid('document.tutorNotes', 'optional string fields must be omitted rather than empty')
@@ -270,7 +274,7 @@ export function validateDocument(value: unknown): LearnDocument {
     format: LEARN_FORMAT, version: LEARN_VERSION,
     threadId: text(d.threadId, 'document.threadId', true), title: text(d.title, 'document.title', true),
     createdAt: timestamp(d.createdAt, 'document.createdAt'), updatedAt: timestamp(d.updatedAt, 'document.updatedAt'),
-    cards: array(d.cards, 'document.cards').map((value, index) => card(value, index, version)),
+    cards: array(d.cards, 'document.cards').map(card),
     connections: array(d.connections, 'document.connections').map(connection),
     viewport: { x: number(v.x, 'document.viewport.x'), y: number(v.y, 'document.viewport.y'), zoom: number(v.zoom, 'document.viewport.zoom', true) },
   }
@@ -328,6 +332,7 @@ export function canvasToDocument(canvas: DocumentCanvas, metadata: ThreadMetadat
     connections: canvas.edges.map(edge => ({
       id: edge.id, source: edge.source, target: edge.target,
       sourceHandle: edge.sourceHandle ?? 's', targetHandle: edge.targetHandle ?? 't',
+      ...(edge.data?.mergeContext !== undefined ? { mergeContext: edge.data.mergeContext } : {}),
     })),
     viewport: { x: canvas.viewport.x, y: canvas.viewport.y, zoom: canvas.viewport.zoom },
   })
@@ -345,7 +350,10 @@ export function documentToCanvas(document: LearnDocument): DocumentCanvas {
         data: c.kind === 'prompt' ? { ...data, focus: false } : data,
       } as LVNode
     }),
-    edges: d.connections.map(c => ({ ...c, animated: false })),
+    edges: d.connections.map(({ mergeContext, ...c }) => ({
+      ...c, animated: false,
+      ...(mergeContext !== undefined ? { data: { mergeContext } } : {}),
+    })),
     viewport: d.viewport,
   }
 }

@@ -1,4 +1,4 @@
-# Portable `.learn` document format — v4
+# Portable `.learn` document format — v5
 
 [← Learnvas](../README.md)
 
@@ -12,10 +12,10 @@ The [bridge file-library API](thread-library.md) manages `~/.learnvas/<human-rea
 
 All fields below are required. A document is identified by its **format marker and supported schema version**, never by `.learn` alone.
 
-| Field | v4 value / meaning |
+| Field | v5 value / meaning |
 | --- | --- |
 | `format` | Exactly `"learnvas"`. |
-| `version` | Integer `4`. |
+| `version` | Integer `5`. |
 | `threadId` | Stable, nonempty string. Learnvas generates a UUID for new threads; readers treat IDs as opaque strings. |
 | `title` | Nonempty human-readable title; chosen by the user when creating a thread. |
 | `createdAt` | Valid UTC timestamp, exactly `YYYY-MM-DDTHH:mm:ss.sssZ`. Immutable during ordinary saves. |
@@ -32,7 +32,7 @@ An empty, valid document:
 ```json
 {
   "format": "learnvas",
-  "version": 4,
+  "version": 5,
   "threadId": "e5131990-80b9-4489-bcae-d3d645c04b7c",
   "title": "Empty canvas",
   "createdAt": "2026-01-01T10:00:00.000Z",
@@ -66,7 +66,7 @@ A collapsed card still saves its expanded height. On load, the UI applies width 
 | --- | --- |
 | `sent` | Required boolean. `false` preserves an unsent draft. Loading a `true` prompt does not resend it. |
 | `quote` | Optional verbatim string containing a selected excerpt, including an empty string. Its parent is determined by the incoming connection; no separate quote reference exists. Not allowed on merge prompts. |
-| `mergeContext` | Optional `"selected"` or `"histories"`. Its presence makes this a merge prompt, whose incoming connections identify its sources in connection-array order. `selected` includes only source-card content; `histories` includes their ancestry, respecting any earlier selected-only boundaries. |
+| `mergeContext` | Optional `"selected"` or `"histories"`. Its presence makes this a merge prompt, whose incoming connections identify its sources in connection-array order. This is the default for incoming sources: `selected` includes only source-card content; `histories` includes their ancestry, respecting earlier boundaries. Each connection may override it independently. |
 | `thinkingEfforts` | Optional array of distinct Pi effort names: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`. This prompt's selection for the next Ask/Re-run, not historical generation metadata. Empty is a valid draft selection that disables submission. Omission initializes the UI from the selected model's SDK default without saving on read. The displayed choice remains subject to review on incompatible model changes; Ask persists the selection. Saved choices are never silently replaced by a new model's default. |
 
 ### Response-only fields
@@ -83,7 +83,7 @@ Runtime `streaming` responses are exported as `stopped`, keeping every text chun
 
 ## Connections and graph invariants
 
-Each connection requires exactly these fields:
+Each connection has these fields (all required except `mergeContext`):
 
 | Field | Meaning |
 | --- | --- |
@@ -91,6 +91,7 @@ Each connection requires exactly these fields:
 | `source`, `target` | Existing card IDs. |
 | `sourceHandle` | One of `"s-top"`, `"s"` (right), `"s-bottom"`, `"s-left"`, `"s-corner"` (upper-right fallback). |
 | `targetHandle` | One of `"t-top"`, `"t-right"`, `"t-bottom"`, `"t"` (left). |
+| `mergeContext` | Optional `"selected"` or `"histories"`, allowed only when the target is a merge prompt. Overrides that prompt's default for this source only. Omission uses the prompt's default. |
 
 Handles are explicit in the document. The UI adapter maps absent/null legacy **runtime** handles to `s`/`t`; a `.learn` file may not omit them. Handle sides need not be opposite: the saved attachment arrangement is preserved exactly, not recomputed from positions.
 
@@ -103,17 +104,15 @@ The graph is a directed acyclic graph (DAG):
 - No missing references, duplicate source/target pairs, self-connections, or cycles are allowed. Only merge prompts may have multiple parents.
 - `sent` describes recorded prompt state; it is not inferred from the graph or used to execute requests.
 
-Merged context includes each shared card once and labels independent conversation paths instead of flattening them into a fabricated chat transcript. Selected-only boundaries remain effective in subsequent continuations and nested history merges. Source-card text remains live context, not a frozen copy; deleting a source disconnects it. A shared merge and its descendants survive deletion while another source survives; deleting the merge itself or all its sources removes its downstream branch. Undo restores removed source connections.
+Merged context includes each shared card once and labels independent conversation paths instead of flattening them into a fabricated chat transcript. Each source's selected-only boundary remains effective in subsequent continuations and nested history merges. An ancestor omitted on one path may still be legitimately included through another history-enabled source; it is emitted once. Source-card text remains live context, not a frozen copy; deleting a source disconnects it. A shared merge and its descendants survive deletion while another source survives; deleting the merge itself or all its sources removes its downstream branch. Undo restores removed source connections.
 
 ## Validation and version/migration boundary
 
-v4 is **strict**: missing required fields, incorrect types, unknown fields at any level, invalid dates, invalid dimensions/viewport values, and invalid graph references are rejected. Values are not coerced. Optional fields must be omitted rather than set to `null`. A plain JSON object is required. Standard `JSON.parse` semantics apply.
+v5 is **strict**: missing required fields, incorrect types, unknown fields at any level, invalid dates, invalid dimensions/viewport values, and invalid graph references are rejected. Values are not coerced. Optional fields must be omitted rather than set to `null`. A plain JSON object is required. Standard `JSON.parse` semantics apply.
 
-`validateDocument` checks the marker and version before validating the body. **Versions 2 and 3 remain readable:** each original strict field allowlist is validated first, then a detached v4 document is returned with identity, text, notes, layout, graph, and timestamps unchanged. No effort metadata or default choices are invented. Reading/listing does not rewrite the source file or change its revision; the next save/export emits v4. v2 input cannot contain merge fields or multiple-parent prompts. Neither v2 nor v3 input may contain v4 thinking fields; unknown fields cannot bypass validation by claiming an older version.
+`validateDocument` checks the marker and version before validating the body. **Only v5 is supported.** Earlier experimental v1–v4 files are intentionally retired without migration; create fresh threads for this build. Existing files are not deleted or rewritten automatically. Older builds cannot read v5, and reverting code does not downgrade saved files.
 
-**Rollback:** older Learnvas builds cannot read v4 files. Back up v2/v3 `.learn` files before editing/saving with this build if you need to return to an older build; reverting feature commits does not downgrade saved data. There is no lossy automatic downgrade of graphs or generation metadata.
-
-Future versions need their own validator and explicit migration path. **Version 1 remains retired without migration.** Unsupported positive integer versions fail with `unsupported-version`, naming the version and supported versions. Missing/invalid markers fail with `invalid-format`; malformed JSON fails with `invalid-json`; other malformed fields fail with `invalid-document`. Errors include a field path. No silent downgrade, best-effort rewrite, or extension-based fallback is allowed.
+Unsupported positive integer versions fail with `unsupported-version`, naming the version and the supported version. Missing/invalid markers fail with `invalid-format`; malformed JSON fails with `invalid-json`; other malformed fields fail with `invalid-document`. Errors include a field path. No silent downgrade, best-effort rewrite, or extension-based fallback is allowed.
 
 Parsing and validation are read-only and return detached canonical objects. Serializing validates **before** JSON encoding so invalid numbers, undefined fields, and unexpected fields cannot quietly disappear. Helpers do not open, rename, truncate, or rewrite files. A caller must successfully validate before replacing current state or saving; rejected documents remain untouched.
 
@@ -139,6 +138,6 @@ Invalid/unsupported library documents are preserved with warnings. Save failures
 
 The browser autosaves through the bridge after a 400 ms debounce and restores each thread's saved viewport rather than fitting over it. New threads receive fresh stable IDs; **Clear** retains the active thread identity. Old `learnvas:document` and MVP `learnvas:v1` browser records are ignored, not migrated or deleted. Closing/reloading before saving finishes may lose the latest edits; back up library files separately.
 
-The bridge reuses this validator and serializer directly; its [library API](thread-library.md) adds bounded sizes, filename rules, revision checks, and durable file operations without changing v4.
+The bridge reuses this validator and serializer directly; its [library API](thread-library.md) adds bounded sizes, filename rules, revision checks, and durable file operations without changing v5.
 
 Out of scope: Pi transcript integration, arbitrary external-file editing, attachments, collaboration, automatic legacy migration, and persisted undo history.

@@ -253,10 +253,13 @@ for (const [name, change, code = 'invalid-document'] of invalidCases) {
   })
 }
 
-test('schema version 1 remains retired without migration', () => {
-  const d = fixture()
-  d.version = 1
-  assert.throws(() => validateDocument(d), error => error instanceof LearnDocumentError && error.code === 'unsupported-version' && /version 1/.test(error.message))
+test('all earlier experimental schemas are rejected without migration or mutation', () => {
+  for (const version of [1, 2, 3, 4]) {
+    const d = { ...fixture(), version }
+    const before = JSON.stringify(d)
+    assert.throws(() => validateDocument(d), error => error instanceof LearnDocumentError && error.code === 'unsupported-version' && /only version 5/.test(error.message))
+    assert.equal(JSON.stringify(d), before)
+  }
 })
 
 test('per-thread tutorNotes round-trips and must be omitted rather than empty', () => {

@@ -39,7 +39,7 @@ Open the URL printed by Vite, normally **http://localhost:5173**. Type a questio
 | [Using the canvas](docs/usage.md) | Branching, shortcuts, model comparison, navigation, card controls, and tutor notes. |
 | [Models and configuration](docs/configuration.md) | Provider selection, extension inventory, and environment variables. |
 | [Data and privacy](docs/privacy.md) | Local persistence, limitations, tutor isolation, and security precautions. |
-| [Portable `.learn` format](docs/learn-format.md) | v4 document schema, read-only v2/v3 upgrades, generation settings, merge context, and validation. |
+| [Portable `.learn` format](docs/learn-format.md) | v5-only document schema, generation settings, per-source merge context, and validation. |
 | [Local thread library API](docs/thread-library.md) | Thread controls, import/export, revisions, collision confirmation, trash/restore, and recovery. |
 | [Development](docs/development.md) | Commands, architecture, source map, and contribution checks. |
 | [Troubleshooting](docs/troubleshooting.md) | Common problems and useful details for bug reports. |

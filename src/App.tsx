@@ -11,7 +11,6 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
-  type Edge,
   type XYPosition,
 } from '@xyflow/react'
 import { AppCtx, type AppActions } from './actions'
@@ -22,6 +21,7 @@ import { fetchModels, fetchTutorNotes, saveTutorNotes, streamChat, type ModelInf
 import { captureDeletion, restoreDeletion, type CanvasGraph } from './lib/deletion'
 import { buildConversation } from './lib/conversation'
 import { createMergeDraft } from './lib/mergeDraft'
+import { setMergeScope } from './lib/mergeContext'
 import { canvasToDocument, documentToCanvas } from './lib/learnDocument'
 import { threadApi, type ThreadRecord } from './lib/threadApi'
 import { LAST_THREAD_KEY, ThreadWorkspace } from './lib/threadWorkspace'
@@ -35,7 +35,7 @@ import { parseThemePreference } from './lib/theme'
 import { useTheme } from './lib/useTheme'
 import { PromptCard } from './nodes/PromptCard'
 import { ResponseCard } from './nodes/ResponseCard'
-import type { ChatMsg, LVNode, PromptNode, ResponseData, ResponseNode } from './types'
+import type { ChatMsg, LVEdge, LVNode, MergeContext, PromptNode, ResponseData, ResponseNode } from './types'
 
 const nodeTypes = { prompt: PromptCard, response: ResponseCard }
 
@@ -83,7 +83,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
   const persistence = useSyncExternalStore(workspace.subscribe, workspace.getSnapshot)
   const [viewport, setViewport] = useState(saved.viewport)
   const [nodes, rawSetNodes] = useState<LVNode[]>(saved.nodes)
-  const [edges, rawSetEdges] = useState<Edge[]>(saved.edges)
+  const [edges, rawSetEdges] = useState<LVEdge[]>(saved.edges)
   const [models, setModels] = useState<ModelInfo[]>([])
   const [defaultModel, setDefaultModel] = useState('')
   const [modelLoadError, setModelLoadError] = useState<string | null>(null)
@@ -118,7 +118,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     nodesRef.current = typeof update === 'function' ? update(nodesRef.current) : update
     rawSetNodes(nodesRef.current)
   }, [])
-  const setEdges = useCallback((update: Edge[] | ((edges: Edge[]) => Edge[])) => {
+  const setEdges = useCallback((update: LVEdge[] | ((edges: LVEdge[]) => LVEdge[])) => {
     if (!alive.current) return
     edgesRef.current = typeof update === 'function' ? update(edgesRef.current) : update
     rawSetEdges(edgesRef.current)
@@ -280,6 +280,12 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     cancelSelection()
     void setCenter(draft.node.position.x + 140, draft.node.position.y + 130, { zoom: getZoom(), duration: 200 })
   }, [selectionMode, selectedNodeIds, setNodes, setEdges, cancelSelection, getZoom, setCenter])
+
+  const updateMergeScope = useCallback((id: string, scope: MergeContext, sourceId?: string) => {
+    const next = setMergeScope(nodesRef.current, edgesRef.current, id, scope, sourceId)
+    setNodes(next.nodes)
+    setEdges(next.edges)
+  }, [setNodes, setEdges])
 
   /* ---------- canvas shortcuts ---------- */
   useEffect(() => {
@@ -524,7 +530,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
           focus: true,
         },
       }
-      const parentEdge: Edge = {
+      const parentEdge: LVEdge = {
         id: `e-${sourceId}-${promptId}`,
         source: sourceId,
         target: promptId,
@@ -577,6 +583,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
     () => ({
       patchNode,
       updatePrompt: patchNode,
+      updateMergeScope,
       removeNode,
       sendPrompt,
       branchPrompt,
@@ -594,7 +601,7 @@ function Canvas({ record, workspace, openThreads }: { record: ThreadRecord; work
       globalNotes,
       setGlobalNotes: setGlobalNotesPersisted,
     }),
-    [patchNode, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, selectionMode, selectedNodeIds, toggleNodeSelection, models, selectedModel, defaultModel, notesReady, notesLoadError, modelLoadError, globalNotes, setGlobalNotesPersisted],
+    [patchNode, updateMergeScope, removeNode, sendPrompt, branchPrompt, addAttachedPrompt, resizeNode, stopStream, newPrompt, selectionMode, selectedNodeIds, toggleNodeSelection, models, selectedModel, defaultModel, notesReady, notesLoadError, modelLoadError, globalNotes, setGlobalNotesPersisted],
   )
 
   return (

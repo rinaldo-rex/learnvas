@@ -1,5 +1,7 @@
 # Thinking-effort comparison verification (#25)
 
+Historical verification at v4. The per-source merge change (#22) now supports only v5 and removes the v2/v3 migration paths and legacy fixture described below. Current behavior is documented in [the format specification](learn-format.md).
+
 ## Scope
 
 Effort choices live inside each expanded prompt card. One model remains selected in the toolbar. Ask/Re-run (including Ctrl/Cmd+Enter) starts the selected efforts together, with a visible response count. No separate Compare action, multi-model batch, benchmark, or background generation was added.

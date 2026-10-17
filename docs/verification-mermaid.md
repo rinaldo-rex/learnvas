@@ -21,7 +21,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 const now = new Date().toISOString()
 const text = await readFile('src/lib/fixtures/mermaid.md', 'utf8')
 const document = {
-  format: 'learnvas', version: 4, threadId: crypto.randomUUID(),
+  format: 'learnvas', version: 5, threadId: crypto.randomUUID(),
   title: 'Mermaid checks', createdAt: now, updatedAt: now,
   cards: [
     { id: 'q', kind: 'prompt', text: 'Diagram fixture', position: { x: 0, y: 0 }, collapsed: true, sent: true },

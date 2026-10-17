@@ -6,6 +6,7 @@ import { useApp } from '../actions'
 import { useOverflowing } from '../lib/useOverflow'
 import type { PromptNode } from '../types'
 import { ThinkingChoices } from '../components/ThinkingChoices'
+import { MergeContextChoices } from '../components/MergeContextChoices'
 import { effortProblem, promptEfforts, type ThinkingLevel } from '../lib/thinking'
 
 const oneLine = (s: string, n = 46) => {
@@ -79,18 +80,7 @@ export function PromptCard({ id, data, width, height }: NodeProps<PromptNode>) {
         </button>
       </div>
 
-      {data.mergeContext && <div className="merge-context nodrag nopan" onClick={event => event.stopPropagation()}>
-        {data.sent ? <span className="merge-context-badge">
-          {data.mergeContext === 'selected' ? 'Selected cards only' : 'Cards + histories'}
-        </span> : <fieldset>
-          <legend>Include</legend>
-          <div className="merge-context-options">
-            <button type="button" aria-pressed={data.mergeContext === 'selected'} onClick={() => updatePrompt(id, { mergeContext: 'selected' })}>Selected cards only</button>
-            <button type="button" aria-pressed={data.mergeContext === 'histories'} onClick={() => updatePrompt(id, { mergeContext: 'histories' })}>Cards + histories</button>
-          </div>
-          <p>{data.mergeContext === 'selected' ? 'Only source-card text; earlier discussion stays out.' : 'Includes earlier discussion; shared history appears once.'}</p>
-        </fieldset>}
-      </div>}
+      {data.mergeContext && <MergeContextChoices id={id} scope={data.mergeContext} sent={data.sent} collapsed={collapsed} />}
 
       {!collapsed && (
         <>

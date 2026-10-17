@@ -1,6 +1,16 @@
 # Conversation merge verification
 
-## Automated checks
+## Per-source scope follow-up (#22)
+
+- `pnpm test`: **212 tests pass**; `pnpm build` passes (existing Vite large-chunk warning).
+- Each draft source has a **Card only** / **Card + history** selector. Whole-merge buttons reset every source; sent merges lock controls and show **Mixed context** when applicable.
+- Regression tests cover both override directions, shared-history deduplication, nested/continued exclusions, literal vs expanded paths in either visit order, strict connection validation, source deletion/undo, and persistence/export/import across isolated libraries.
+- System Chrome against both production and Vite development builds, with a temporary library and deterministic SSE endpoint, verified source order, real-keyboard selection, reset-all behavior, autosave/reload, captured mixed request context, sent locking/collapse, and light/dark/narrow rendering without paid provider calls. The browser harness could not start; the documented Playwright fallback was used. No page exceptions.
+- Only `.learn` **v5** is supported. Older experimental schemas are rejected without modifying existing files; migration support and the legacy fixture were removed by agreement.
+
+The sections below record the original whole-merge implementation's verification.
+
+## Original automated checks
 
 - `pnpm test`: **173 tests pass** (154 before this feature).
 - `pnpm build`: TypeScript and production build pass. Vite still reports the existing large-chunk warning.
@@ -43,7 +53,7 @@ The browser run validates request construction and streaming UI, not the quality
 ## Rollback and deliberate limits
 
 - Feature work is split into conventional, atomic commits on `feat/conversation-merges`; the pre-existing untracked `pnpm-workspace.yaml` is untouched.
-- Current saves/exports emit `.learn` v4 (v3 introduced merges; v4 adds thinking settings). v2/v3 files remain readable and are not rewritten just by reading. **Older builds cannot read v4**: keep v2/v3 backups before saving if you need to roll back. Reverting code does not downgrade merged documents.
-- One context setting applies to the whole merge and is locked once sent; compare scopes using separate merge drafts. Per-card context controls are tracked in [#22](https://github.com/rinaldo-rex/learnvas/issues/22).
+- Current saves/exports emit `.learn` v5 only. Earlier experimental files are intentionally unsupported and are not migrated or deleted. Reverting code does not downgrade saved data.
+- Per-source scopes are supported by #22; settings remain locked once sent. Compare scopes using separate merge drafts.
 - Sources are live card references, not frozen snapshots. Re-running uses their current content. Deleting a source disconnects it; remaining sources keep the shared merge alive.
 - Merge creation itself is not undoable; existing deletion undo can remove/restore a merge branch.

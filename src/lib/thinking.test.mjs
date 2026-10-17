@@ -48,44 +48,7 @@ test('labels distinguish legacy, unconfirmed, confirmed, unsupported and request
   assert.equal(thinkingLabel({ thinking: 'unsupported', requestedThinking: 'off' }), 'Thinking: not supported')
 })
 
-test('v2 and v3 upgrade only in memory; old efforts are unknown and their original field rules remain strict', () => {
-  for (const version of [2, 3]) {
-    const old = { ...fixture(), version }
-    const before = JSON.stringify(old)
-    const upgraded = validateDocument(old)
-    assert.equal(upgraded.version, 4)
-    assert.equal(JSON.stringify(old), before)
-    assert.deepEqual(upgraded, { ...old, version: 4 })
-    for (const record of upgraded.cards) {
-      assert.equal(Object.hasOwn(record, 'thinking'), false)
-      assert.equal(Object.hasOwn(record, 'thinkingEfforts'), false)
-    }
-    for (const field of ['thinking', 'requestedThinking']) {
-      const illegal = structuredClone(old)
-      illegal.cards.find(card => card.kind === 'response')[field] = 'high'
-      assert.throws(() => validateDocument(illegal), /unknown field/)
-    }
-    const illegal = structuredClone(old)
-    illegal.cards.find(card => card.kind === 'prompt').thinkingEfforts = ['low']
-    assert.throws(() => validateDocument(illegal), /unknown field/)
-  }
-  const legacy = JSON.parse(readFileSync(new URL('./fixtures/legacy-v3.learn', import.meta.url), 'utf8'))
-  assert.equal(legacy.version, 3)
-  assert.equal(validateDocument(legacy).version, 4)
-})
-
-test('v3 merges remain readable without relaxing the strict v2 forest boundary', () => {
-  const document = fixture()
-  const sources = document.cards.filter(card => card.kind === 'prompt' && !document.connections.some(edge => edge.target === card.id)).slice(0, 2)
-  document.cards.push({ id: 'merge', kind: 'prompt', text: 'Merge', position: { x: 0, y: 0 }, collapsed: false, sent: false, mergeContext: 'histories' })
-  document.connections.push(...sources.map((card, i) => ({ id: `m${i}`, source: card.id, target: 'merge', sourceHandle: 's', targetHandle: 't' })))
-  document.version = 3
-  assert.equal(validateDocument(document).cards.at(-1).mergeContext, 'histories')
-  document.version = 2
-  assert.throws(() => validateDocument(document), /unknown field/)
-})
-
-test('v4 selections and all response metadata survive canvas/save/export round trips, including stopped/error answers', () => {
+test('current selections and all response metadata survive canvas/save/export round trips, including stopped/error answers', () => {
   const document = fixture()
   document.cards.find(card => card.kind === 'prompt').thinkingEfforts = ['low', 'high']
   for (const [index, response] of document.cards.filter(card => card.kind === 'response').entries()) {
@@ -100,7 +63,7 @@ test('v4 selections and all response metadata survive canvas/save/export round t
   assert.deepEqual(document.cards.find(card => card.kind === 'prompt').thinkingEfforts, ['low', 'high'])
 })
 
-test('v4 rejects malformed metadata, wrong-kind fields, duplicates, null and unknown fields without coercion', () => {
+test('current format rejects malformed metadata, wrong-kind fields, duplicates, null and unknown fields without coercion', () => {
   for (const value of [null, 42, '', 'ultra', undefined]) {
     for (const field of ['requestedThinking', 'thinking']) {
       const document = fixture()

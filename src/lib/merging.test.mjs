@@ -23,18 +23,33 @@ test('current merges unrelated sources and round-trips scope, source order, and 
   }
 })
 
-test('v2 forests upgrade read-only to v4 without changing identity or content', () => {
-  const legacy = { ...fixture(), version: 2 }
-  const before = JSON.stringify(legacy)
-  const migrated = validateDocument(legacy)
-  assert.equal(migrated.version, 4)
-  assert.deepEqual(migrated, { ...legacy, version: 4 })
-  assert.equal(JSON.stringify(legacy), before)
-  assert.equal(parseDocument(serializeDocument(migrated)).version, 4)
-  assert.throws(() => validateDocument({ ...merged(), version: 2 }), /unknown field/)
-  const forest = { ...merged(), version: 2 }
-  delete forest.cards[2].mergeContext
-  assert.throws(() => validateDocument(forest), /multiple parents/)
+test('per-source scopes round-trip separately from the merge-wide default without aliasing', () => {
+  const d = merged()
+  d.connections[1].mergeContext = 'selected'
+  const before = structuredClone(d)
+  const canvas = documentToCanvas(d)
+  assert.equal(canvas.edges[1].data.mergeContext, 'selected')
+  canvas.edges[1].data.apiKey = 'must-not-export'
+  canvas.edges[1].data.callback = () => {}
+  assert.deepEqual(canvasToDocument(canvas, d), before)
+  assert.deepEqual(parseDocument(serializeDocument(d)), before)
+  canvas.edges[1].data.mergeContext = 'histories'
+  assert.deepEqual(d, before)
+})
+
+test('per-source overrides reject malformed scopes and non-merge targets', () => {
+  for (const scope of [null, '', true, 'everything', undefined]) {
+    const d = merged()
+    d.connections[0].mergeContext = scope
+    assert.throws(() => validateDocument(d), /expected selected or histories/)
+  }
+  const ordinary = fixture()
+  ordinary.connections[0].mergeContext = 'selected'
+  assert.throws(() => validateDocument(ordinary), /require a merge prompt target/)
+  const d = merged()
+  d.cards.push(prompt('ordinary'))
+  d.connections.push({ ...edge('a', 'ordinary'), mergeContext: 'histories' })
+  assert.throws(() => validateDocument(d), /require a merge prompt target/)
 })
 
 test('merge validation rejects invalid scopes, quotes, duplicate sources, missing sources, and cycles', () => {

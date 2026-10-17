@@ -1,9 +1,8 @@
-import type { Edge } from '@xyflow/react'
-import type { LVNode } from '../types'
+import type { LVEdge, LVNode } from '../types'
 
 export interface CanvasGraph {
   nodes: LVNode[]
-  edges: Edge[]
+  edges: LVEdge[]
 }
 
 /** Capture only the deleted branch and its incident edges, not the whole canvas. */

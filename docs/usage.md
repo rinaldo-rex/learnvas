@@ -34,10 +34,10 @@ A selected passage or **+** creates a **draft**, not an immediate model request.
 1. Press **S** (outside an input), or click **Select cards (S)**, to enter selection mode.
 2. Click any two or more prompt/response cards, including cards from unrelated roots. Click again to deselect. Card controls and dragging are paused while selecting; Tab/Space/Enter can also toggle the selection buttons.
 3. Press **M**, or click **Merge (M)**. A connected merge draft opens and focuses its input. No model request starts yet; originals stay intact.
-4. Choose **Selected cards only** or **Cards + histories** (default). The first sends only source-card content, while the second includes earlier discussion and shared history once. One setting applies to the whole merge; [per-source controls are deferred](https://github.com/rinaldo-rex/learnvas/issues/22).
+4. Choose **Selected cards only** or **Cards + histories** (default) for all sources, then adjust individual sources using **Card only** / **Card + history**. For example, include A's earlier discussion but only B's answer text. Shared history appears once. Choosing either whole-merge button again resets every source to that scope.
 5. Write instructions such as “Merge only the criticism about X and Y,” then send normally. A separate response appears using the selected model.
 
-**Esc** or **S** cancels selection. **M** needs at least two cards. The selection bar stays available in zen mode. Selection is temporary, not saved; drafts, connections, and the context setting are saved. Once sent, a scope badge stays visible and the setting is locked; create a new merge to compare scopes. Continue from the response normally: excluded histories do not silently return in later replies, including nested history merges.
+**Esc** or **S** cancels selection. **M** needs at least two cards. The selection bar stays available in zen mode. Selection is temporary, not saved; drafts, connections, and each source's context setting are saved. Once sent, a scope badge (including **Mixed context**) stays visible; expand the card to inspect each source's scope. Settings are locked; create a new merge to compare scopes. Continue from the response normally: excluded histories do not silently return in later replies, including nested history merges.
 
 Deleting one source disconnects it but preserves a shared merge while another source remains. Deleting the merge itself, or all of its sources, removes its downstream branch. Undo restores source cards and connections. Context is assembled from the current source text at send/re-run time, not a frozen snapshot.
 
@@ -51,7 +51,7 @@ Choose a model in the toolbar, then choose **Thinking effort** inside each expan
 - Existing choices that a new model does not support remain visibly unavailable. Remove them or choose **Use normal answer** for a non-thinking model; nothing is silently substituted. Selecting no efforts disables Ask/Re-run.
 - **Not recorded** means the old answer has no effort metadata. **Unconfirmed (requested …)** means the request has not supplied session confirmation. A requested/effective difference shows both; non-thinking models say **Not supported**. These are SDK session settings, not scores, measured compute, or proof that a higher effort is better. Virtual routers/provider mappings may make further unreported adjustments.
 
-Prompt selections and per-answer metadata travel with `.learn` v4 exports. Existing v2/v3 files remain readable; back them up before saving if you need compatibility with older Learnvas builds.
+Prompt selections, per-answer metadata, and per-source merge scopes travel with `.learn` v5 exports. Only v5 files are supported; earlier experimental files are not migrated. Start fresh threads with this build.
 
 ## Tune the tutor with notes
 

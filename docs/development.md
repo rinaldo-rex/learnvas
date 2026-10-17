@@ -58,7 +58,7 @@ Paths below are relative to the project root.
 | `src/lib/conversation.ts`, `src/lib/mergeDraft.ts` | Merge context traversal, selected-only boundaries, stable source order, and merge-draft placement. |
 | `src/components/SelectableCard.tsx` | Inert card controls plus accessible click/keyboard selection overlays. |
 | `src/lib/ports.ts` | Available sides, branch placement, and response direction. |
-| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v4 schema (strict, read-only v2/v3 upgrades), validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
+| `src/lib/learnDocument.ts`, `src/lib/canvasStorage.ts` | Canonical `.learn` v5-only schema (strict, no legacy migration), validation/serialization, UI projection, and browser storage. See [format specification](learn-format.md). |
 | `src/lib/fixtures/*.learn` | Representative portable canvases used by round-trip tests. |
 | `src/lib/theme.ts`, `src/lib/useTheme.ts`, `src/theme.css` | Theme preference, system appearance, and color tokens. |
 | `server/index.mjs` | Pi session creation, provider warmup, and bridge startup (loopback-only). |

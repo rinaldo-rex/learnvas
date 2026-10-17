@@ -71,6 +71,55 @@ test('a card used both literally and with history still expands on the history p
   assert.ok(!material.cards.some(c => c.id === 'unrelated'))
 })
 
+test('mixed sources honor both override directions and exclude unrelated history through continuations', () => {
+  for (const defaultScope of ['selected', 'histories']) {
+    const g = graph(defaultScope)
+    for (const e of g.edges.filter(e => e.target === 'merge')) e.data = { mergeContext: e.source === 'c' ? 'selected' : 'histories' }
+    for (const target of ['merge', 'follow-up']) {
+      const material = context(buildConversation(g.nodes, g.edges, target))
+      assert.equal(material.cards.filter(c => c.id === 'root').length, 1)
+      assert.ok(material.cards.some(c => c.id === 'a'))
+      assert.ok(material.cards.some(c => c.id === 'b'))
+      assert.ok(material.cards.some(c => c.id === 'c'))
+      assert.ok(!material.cards.some(c => c.id === 'unrelated'))
+    }
+    const material = context(buildConversation(g.nodes, g.edges, 'merge'))
+    assert.deepEqual(material.sourceContexts, [
+      { source: 'a', context: 'histories' }, { source: 'b', context: 'histories' }, { source: 'c', context: 'selected' },
+    ])
+  }
+})
+
+test('nested mixed merges keep boundaries; literal merge sources expose no hidden source IDs', () => {
+  const g = graph()
+  g.edges.find(e => e.source === 'c' && e.target === 'merge').data = { mergeContext: 'selected' }
+  g.nodes.push(prompt('nested', { mergeContext: 'histories' }), prompt('another'))
+  g.edges.push(edge('combined', 'nested'), edge('another', 'nested'))
+  let material = context(buildConversation(g.nodes, g.edges, 'nested'))
+  assert.ok(!material.cards.some(c => c.id === 'unrelated'))
+  assert.equal(material.cards.find(c => c.id === 'merge').sourceContexts[2].context, 'selected')
+  g.edges.find(e => e.source === 'combined' && e.target === 'nested').data = { mergeContext: 'selected' }
+  material = context(buildConversation(g.nodes, g.edges, 'nested'))
+  assert.deepEqual(material.cards.map(c => c.id), ['combined', 'another'])
+  g.edges.find(e => e.source === 'combined' && e.target === 'nested').source = 'merge'
+  material = context(buildConversation(g.nodes, g.edges, 'nested'))
+  assert.deepEqual(material.cards.map(c => c.id), ['merge', 'another'])
+  assert.equal(material.cards[0].sourceContexts, undefined)
+})
+
+test('mixed literal and expanded paths deduplicate a shared source regardless of visit order', () => {
+  for (const reverse of [false, true]) {
+    const g = graph('selected')
+    g.nodes.push(prompt('nested', { mergeContext: 'selected' }))
+    const incoming = [edge('combined', 'nested'), { ...edge('a', 'nested'), data: { mergeContext: 'histories' } }]
+    g.edges.push(...(reverse ? incoming.reverse() : incoming))
+    const material = context(buildConversation(g.nodes, g.edges, 'nested'))
+    assert.equal(material.cards.filter(c => c.id === 'a').length, 1)
+    assert.equal(material.cards.filter(c => c.id === 'root').length, 1)
+    assert.ok(!material.cards.some(c => c.id === 'unrelated'))
+  }
+})
+
 test('selecting an ancestor and descendant does not duplicate overlapping context', () => {
   const g = graph()
   g.edges.push(edge('root', 'merge'))

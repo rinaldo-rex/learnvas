@@ -19,7 +19,7 @@ See [Getting started](getting-started.md) for authentication and launch instruct
 
 ## Portable files and save conflicts
 
-Import validates content rather than trusting the filename. Check the error's field path, supported versions (v4 and read-only v2/v3 upgrades; retired v1 files must be recreated), UTF-8 encoding, and 8 MiB limit; rejected files are not rewritten. Duplicate IDs offer a separate copy only. Cancelling either the import/copy prompt or the numbered-filename confirmation adds nothing.
+Import validates content rather than trusting the filename. Check the error's field path, the supported version (v5 only; earlier experimental files must be recreated), UTF-8 encoding, and 8 MiB limit; rejected files are not rewritten. Duplicate IDs offer a separate copy only. Cancelling either the import/copy prompt or the numbered-filename confirmation adds nothing.
 
 Export stops active generation and saves the latest canvas first. A save error/conflict produces no download. Keep the current canvas open; retry saving or enter a new title and use **Save recovery copy**, then export that copy. Do not blindly replace a conflicting revision. Stop the bridge before editing managed files manually. If an I/O error may have occurred after a write became visible, refresh the list before retrying.
 

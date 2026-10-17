@@ -73,10 +73,13 @@ test('export from one library and import into another preserves complete semanti
   assert.equal(target.stops(), 0)
 })
 test('merged graphs export/import across libraries with source order and context boundaries intact', async t => {
-  for (const scope of ['selected', 'histories']) {
+  for (const scope of ['selected', 'histories', 'mixed']) {
     const source = await setup(t)
-    source.active.cards.push({ id: 'merge', kind: 'prompt', position: { x: 1200, y: 300 }, text: 'Combine these criticisms', collapsed: false, sent: false, mergeContext: scope })
-    for (const id of ['answer-biology', 'partial-answer', 'root-math']) source.active.connections.push({ id: `merge-${id}`, source: id, target: 'merge', sourceHandle: 's', targetHandle: 't' })
+    source.active.cards.push({ id: 'merge', kind: 'prompt', position: { x: 1200, y: 300 }, text: 'Combine these criticisms', collapsed: false, sent: false, mergeContext: scope === 'mixed' ? 'selected' : scope })
+    for (const id of ['answer-biology', 'partial-answer', 'root-math']) source.active.connections.push({
+      id: `merge-${id}`, source: id, target: 'merge', sourceHandle: 's', targetHandle: 't',
+      ...(scope === 'mixed' && id === 'answer-biology' ? { mergeContext: 'histories' } : {}),
+    })
     const exported = await source.workspace.exportActive()
     const target = await setup(t, () => true, 'destination')
     const record = await target.workspace.importDocument(parsePortableDocument(bytes(exported.json)), () => true)
@@ -87,7 +90,7 @@ test('merged graphs export/import across libraries with source order and context
     const messages = buildConversation(canvas.nodes, canvas.edges, 'merge')
     const material = JSON.parse(messages[0].content.slice(messages[0].content.indexOf('{')))
     assert.deepEqual(material.sources, ['answer-biology', 'partial-answer', 'root-math'])
-    assert.equal(material.cards.some(c => c.id === 'root-biology'), scope === 'histories')
+    assert.equal(material.cards.some(c => c.id === 'root-biology'), scope !== 'selected')
     assert.equal(material.cards.some(c => c.id === 'quote-draft'), scope === 'histories')
     assert.ok(material.cards.some(c => c.id === 'root-math'))
   }

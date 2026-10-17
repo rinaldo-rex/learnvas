@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react'
-import type { PromptData, ResponseData } from './types'
+import type { MergeContext, PromptData, ResponseData } from './types'
 import type { ModelInfo } from './lib/api'
 import type { ContinuationPort } from './lib/ports'
 import type { ThinkingLevel } from './lib/thinking'
@@ -8,6 +8,8 @@ export interface AppActions {
   // kind is omitted from patches — the discriminant must never be patched.
   patchNode(id: string, patch: Partial<Omit<PromptData, 'kind'>> & Partial<Omit<ResponseData, 'kind'>>): void
   updatePrompt(id: string, patch: Partial<PromptData>): void
+  /** Set all source scopes, or override one incoming source, on an unsent merge. */
+  updateMergeScope(id: string, scope: MergeContext, sourceId?: string): void
   removeNode(id: string): void
   /** Send/re-run this prompt's efforts with the selected model. The optional
    * initial choices preserve UI defaults without saving just by opening a file. */
